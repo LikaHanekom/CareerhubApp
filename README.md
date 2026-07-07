@@ -37,3 +37,13 @@ The Week 2 Day 2 feature that fixes this is an enum (specifically a Dart enum, p
   - a scenario where an employer manually closes a listing early (position filled),which is a distinct business event from just setting a bool, because you can also stamp defaults like isOpen = false and clear closingDate in one call.
 - Job.remote(...)  
     - a scenario where a job is posted with no physical location by design, so location is set to "Remote" and any location-based filtering logic can treat it consistently.
+
+## Scratch Output
+Job(title: Flutter Developer, company: CareerHub, location: Pretoria, isOpen: true, salary: R35000 per month, closingDate: 2026-08-01 00:00:00.000)
+canApply: true, displaySalary: R35000 per month
+Job(title: Backend Intern, company: DataCo, location: Johannesburg, isOpen: true, salary: Market-related, closingDate: none)
+canApply: true, displaySalary: Market-related
+Job(title: Product Designer, company: PixelWorks, location: Cape Town, isOpen: false, salary: Market-related, closingDate: none)
+canApply: false, displaySalary: Market-related
+Job(title: DevOps Engineer, company: CloudNine, location: Remote, isOpen: true, salary: R42000 per month, closingDate: none)
+canApply: true, displaySalary: R42000 per month

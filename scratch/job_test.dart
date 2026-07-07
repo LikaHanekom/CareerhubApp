@@ -1,0 +1,41 @@
+import '../lib/models/job.dart';
+
+void main() {
+  final job1 = Job(
+    title: 'Flutter Developer',
+    company: 'CareerHub',
+    location: 'Pretoria',
+    salary: 35000,
+    employmentType: 'Full-time',
+    isOpen: true,
+    closingDate: DateTime(2026, 8, 1),
+    description: 'Build mobile apps.',
+  );
+
+  final job2 = Job(
+    title: 'Backend Intern',
+    company: 'DataCo',
+    location: 'Johannesburg',
+    employmentType: 'Internship',
+    isOpen: true,
+  );
+
+  final job3 = Job.closed(
+    title: 'Product Designer',
+    company: 'PixelWorks',
+    location: 'Cape Town',
+    employmentType: 'Full-time',
+  );
+
+  final job4 = Job.remote(
+    title: 'DevOps Engineer',
+    company: 'CloudNine',
+    employmentType: 'Contract',
+    salary: 42000,
+  );
+
+  for (final job in [job1, job2, job3, job4]) {
+    print(job);
+    print('  canApply: ${job.canApply}, displaySalary: ${job.displaySalary}');
+  }
+}
