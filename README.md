@@ -183,3 +183,40 @@ All three criteria are satisfied. If I hadn't extracted it, the cost wouldn't sh
 line count — it would show up in clarity: `JobCard`'s build method would keep mixing
 layout-row logic with badge-colour logic in one place, making it harder to reuse the
 title+status pairing anywhere else without copy-pasting the Row and its styling.
+
+## Dark Mode Screenshots
+
+## Layout screenshots
+
+#Submission Checklist
+All items must be true before you submit.
+Part 1 — Written decisions
+[ x ]  Question 1: Crash explanation names the specific widget and the fix
+[ x ]  Question 2: Grid aspect ratio is derived from content estimates, not guessed
+[ x ]  Question 3: Every colour in JobCard and JobStatusBadge is classified and justified
+[ x ]  Question 4: Extraction is justified against the three criteria — not just asserted
+Part 2 — ListView.builder
+[ x ]  Jobs list is List<Job> — not a wrapper type
+[ x ]  Jobs list is static final at class level, not inside build()
+[ x ]  ListView.builder with itemCount and itemBuilder is used
+[ x ]  Filter chip row is present and pinned above the list
+[ x ]  Layout does not crash when filter row and list are combined (Question 1 fix applied)
+[x]  All four job variants from Assignment 1.1 are present
+Part 3 — Adaptive theming
+[ x ]  darkTheme added with same seed colour and brightness: Brightness.dark
+[ x ]  themeMode: ThemeMode.system set
+[ x ]  No hardcoded colour values remain in JobCard or JobStatusBadge
+[ x ]  All text styles in JobCard use textTheme.* references
+[ ]  Dark mode screenshot included in README(Will Add as soon as I have better wifi)
+Part 4 — LayoutBuilder
+[ x ]  LayoutBuilder controls list vs grid at the 600px breakpoint
+[ x ]  Both layouts use the same _buildCard method — no duplicated itemBuilder logic
+[ x ]  childAspectRatio matches the value justified in Question 2
+[ x ]  Filter chip row remains above both layouts
+[ ]  Portrait (list) and landscape (grid) screenshots included in README(Will Add as soon as I have better wifi)
+Part 5 — Widget extraction
+[ x ]  Extracted widget is const-constructible
+[ x ]  Extracted widget uses only theme colours
+[ x ]  JobCard uses the extracted widget — no inline duplication
+[ x ]  Extraction satisfies at least two of the three criteria from Question 4
+[ x ]  README confirms which criteria are met

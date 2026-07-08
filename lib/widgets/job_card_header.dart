@@ -13,8 +13,14 @@ class JobCardHeader extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Expanded(
-          child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
         ),
+        const SizedBox(width: 4),
         JobStatusBadge(isOpen: isOpen),
       ],
     );
