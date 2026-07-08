@@ -7,9 +7,17 @@ class JobStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Chip(
       label: Text(isOpen ? 'Open' : 'Closed'),
-      backgroundColor: isOpen ? Colors.green.shade100 : Colors.red.shade100,
+      backgroundColor: isOpen
+          ? colorScheme.primaryContainer
+          : colorScheme.errorContainer,
+      labelStyle: TextStyle(
+        color: isOpen
+            ? colorScheme.onPrimaryContainer
+            : colorScheme.onErrorContainer,
+      ),
     );
   }
 }

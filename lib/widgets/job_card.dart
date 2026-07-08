@@ -29,10 +29,12 @@ class JobCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 4),
-            Text(job.company),
-            Text(job.location),
+            Text(job.company, style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            )),
+            Text(job.location, style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 8),
-            Text(job.displaySalary),
+            Text(job.displaySalary, style: Theme.of(context).textTheme.bodyMedium),
             if (job.closingDate != null) ...[
               const SizedBox(height: 4),
               Text('Closes: ${job.closingDate!.toLocal().toString().split(' ').first}'),
