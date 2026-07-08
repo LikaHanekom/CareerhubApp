@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/job.dart';
+import 'job_status_badge.dart';
 
 class JobCard extends StatelessWidget {
   final Job job;
@@ -24,12 +25,7 @@ class JobCard extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
-                Chip(
-                  label: Text(job.canApply ? 'Open' : 'Closed'),
-                  backgroundColor: job.canApply
-                      ? Colors.green.shade100
-                      : Colors.red.shade100,
-                ),
+                JobStatusBadge(isOpen: job.canApply),
               ],
             ),
             const SizedBox(height: 4),
