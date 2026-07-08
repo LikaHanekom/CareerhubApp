@@ -38,4 +38,11 @@ void main() {
     print(job);
     print('  canApply: ${job.canApply}, displaySalary: ${job.displaySalary}');
   }
+
+  final job5 = job1.copyWith(isOpen: false);
+  print(job5);
+  print('  Unchanged fields preserved: ${job5.title == job1.title}');
+
+  final job6 = job1.copyWith();
+  print('  copyWith() with no args equals original: ${job6.toString() == job1.toString()}');
 }

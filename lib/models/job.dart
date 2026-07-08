@@ -54,4 +54,33 @@ class Job {
         'isOpen: $isOpen, salary: $displaySalary, '
         'closingDate: ${closingDate ?? "none"})';
   }
+
+  //
+  Job copyWith({
+    String? title,
+    String? company,
+    String? location,
+    double? salary,
+    String? employmentType,
+    bool? isOpen,
+    DateTime? closingDate,
+    String? description,
+  }) {
+    return Job(
+      title: title ?? this.title,
+      company: company ?? this.company,
+      location: location ?? this.location,
+      salary: salary ?? this.salary,
+      employmentType: employmentType ?? this.employmentType,
+      isOpen: isOpen ?? this.isOpen,
+      closingDate: closingDate ?? this.closingDate,
+      description: description ?? this.description,
+    );
+  }
+  bool matches(String query) {
+    final q = query.toLowerCase();
+    return title.toLowerCase().contains(q) ||
+        company.toLowerCase().contains(q) ||
+        location.toLowerCase().contains(q);
+  }
 }

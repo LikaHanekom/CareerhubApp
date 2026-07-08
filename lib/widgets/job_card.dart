@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/job.dart';
+import 'job_status_badge.dart';
+import 'job_card_header.dart';
+
 
 class JobCard extends StatelessWidget {
   final Job job;
@@ -8,6 +11,9 @@ class JobCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Padding(
@@ -15,35 +21,25 @@ class JobCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    job.title,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-                Chip(
-                  label: Text(job.canApply ? 'Open' : 'Closed'),
-                  backgroundColor: job.canApply
-                      ? Colors.green.shade100
-                      : Colors.red.shade100,
-                ),
-              ],
-            ),
+            JobCardHeader(title: job.title, isOpen: job.canApply),
             const SizedBox(height: 4),
-            Text(job.company),
-            Text(job.location),
+            Text(
+              job.company,
+              style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
+            ),
+            Text(job.location, style: textTheme.bodySmall),
             const SizedBox(height: 8),
-            Text(job.displaySalary),
+            Text(job.displaySalary, style: textTheme.bodyMedium),
             if (job.closingDate != null) ...[
               const SizedBox(height: 4),
-              Text('Closes: ${job.closingDate!.toLocal().toString().split(' ').first}'),
+              Text(
+                'Closes: ${job.closingDate!.toLocal().toString().split(' ').first}',
+                style: textTheme.bodySmall,
+              ),
             ],
             if (job.description != null) ...[
               const SizedBox(height: 8),
-              Text(job.description!),
+              Text(job.description!, style: textTheme.bodyMedium),
             ],
           ],
         ),

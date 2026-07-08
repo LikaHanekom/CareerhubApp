@@ -88,3 +88,135 @@ Teal
     without being alarming I'm avoiding red/orange as a 
     primary seed since I'm already using red/green for 
     status chips
+
+## Stretch A — copyWith
+
+`copyWith` solves the problem of updating one field on an immutable object without
+retyping every other field manually — without it, changing just `isOpen` on an existing
+`Job` would require reconstructing the entire object field-by-field. The package that
+generates this automatically in Week 2 is `freezed`.
+
+### Verification output
+
+\`\`\`
+Job(title: Flutter Developer, company: CareerHub, location: Pretoria, isOpen: false, salary: R35000 per month, closingDate: 2026-08-01 00:00:00.000)
+Unchanged fields preserved: true
+copyWith() with no args equals original: true
+\`\`\`
+
+## Stretch B — matches filter
+
+Added `bool matches(String query)`, which checks `title`, `company`, and `location`
+case-insensitively. Verified in `scratch/matches_test.dart` with five jobs and three
+queries, each asserting the expected subset of jobs is returned. This is the filter
+logic that will be wired to Riverpod state in Day 3.
+
+### Verification output
+
+\`\`\`
+Query "flutter" -> [Flutter Developer]
+Query "DATACO" -> [Backend Intern]
+Query "cape town" -> [Product Designer]
+All assertions passed.
+\`\`\`
+
+### Stretch C — JobStatusBadge
+
+Extracted the status indicator into its own `JobStatusBadge` widget, taking `bool isOpen`.
+This is worthwhile rather than keeping the status UI inline in `JobCard` because it
+isolates the status-colour logic in one reusable place — search results and dashboards
+in Week 3 can reuse the exact same badge without duplicating the colour/label logic.
+
+# Assignment 1.2
+
+## Question 1 — Constraint Explanation
+
+`Scaffold.body` gives its child bounded width but unbounded height. A `Column` passes
+that unbounded height down to its children unless told otherwise. `ListView.builder` is
+a scrollable viewport that needs a bounded height to size itself — it cannot lay out
+against infinity, so placing it directly inside a `Column` throws a
+"vertical viewport was given unbounded height" error. The `SingleChildScrollView` chip
+row above it doesn't cause the crash; the `ListView.builder` does. The fix is to wrap
+`ListView.builder` in `Expanded`, which tells the `Column` to give it the remaining
+bounded space after the chip row is laid out — converting the unbounded height constraint
+into a bounded one the list can size against.
+
+## Question 2 — Grid Reasoning
+
+**Content inventory:**
+- Required (always rendered): title, company, location, `displaySalary`, status badge
+- Conditional: closing date, description
+
+**Height estimates** (at ~390px width): minimal card (required fields only) ≈ 140dp.
+Maximal card (all fields present) ≈ 194dp.
+
+**childAspectRatio derivation:** At 2 columns with 8px spacing/padding, each cell is
+roughly (390 − 24) / 2 ≈ 183dp wide. To avoid overflow, I sized the cell height for the
+*maximal* card (~194dp) plus a small buffer, giving a target height of ~210dp.
+`childAspectRatio = width / height = 183 / 210 ≈ 0.87`.
+
+**What happens if sized for the minimal card instead:** a fully populated card would
+overflow the fixed-height cell — Flutter clips the content or renders a yellow-and-black
+overflow warning stripe. This is not acceptable, since it's a rendering bug the user would
+see, not a design choice. Sizing for the maximal card avoids this; the tradeoff is that
+minimal cards leave some empty space in their cell, which is preferable to a broken layout.
+
+## Question 3 — Colour Audit
+
+| Widget | Current Reference | Classification | Replacement Role | Justification |
+|---|---|---|---|---|
+| `JobStatusBadge` | `Colors.green.shade100` (open) | Hardcoded | `colorScheme.primaryContainer` | Represents a positive/active state — the primary container role is the M3-recommended surface for a confirming/active status. |
+| `JobStatusBadge` | `Colors.red.shade100` (closed) | Hardcoded | `colorScheme.errorContainer` | A closed listing signals unavailability/a negative outcome for the user's goal (applying), which is exactly what the `error` role family represents semantically, not just visually. |
+| `JobCard` | Any `Card` default background | Theme-referenced | `colorScheme.surface` (via `Card` default) | `Card` already pulls its colour from the theme's surface role, so no change needed here — confirm this is true in your code. |
+
+## Question 4 — Extraction Justification
+
+I extracted the title-and-status-badge header row into a `JobCardHeader` widget.
+
+1. **Single responsibility (named in <5 words):** "Displays job title and status" — met.
+2. **Rendered in more than one place:** Likely, since Week 3 introduces search results and
+   dashboards that will each need a compact title+status header — met.
+3. **Testable in isolation:** It only needs a `String title` and `bool isOpen`, no dependency
+   on the rest of `JobCard`'s state — met.
+
+All three criteria are satisfied. If I hadn't extracted it, the cost wouldn't show up in
+line count — it would show up in clarity: `JobCard`'s build method would keep mixing
+layout-row logic with badge-colour logic in one place, making it harder to reuse the
+title+status pairing anywhere else without copy-pasting the Row and its styling.
+
+## Dark Mode Screenshots
+
+## Layout screenshots
+
+#Submission Checklist
+All items must be true before you submit.
+Part 1 — Written decisions
+[ x ]  Question 1: Crash explanation names the specific widget and the fix
+[ x ]  Question 2: Grid aspect ratio is derived from content estimates, not guessed
+[ x ]  Question 3: Every colour in JobCard and JobStatusBadge is classified and justified
+[ x ]  Question 4: Extraction is justified against the three criteria — not just asserted
+Part 2 — ListView.builder
+[ x ]  Jobs list is List<Job> — not a wrapper type
+[ x ]  Jobs list is static final at class level, not inside build()
+[ x ]  ListView.builder with itemCount and itemBuilder is used
+[ x ]  Filter chip row is present and pinned above the list
+[ x ]  Layout does not crash when filter row and list are combined (Question 1 fix applied)
+[x]  All four job variants from Assignment 1.1 are present
+Part 3 — Adaptive theming
+[ x ]  darkTheme added with same seed colour and brightness: Brightness.dark
+[ x ]  themeMode: ThemeMode.system set
+[ x ]  No hardcoded colour values remain in JobCard or JobStatusBadge
+[ x ]  All text styles in JobCard use textTheme.* references
+[ ]  Dark mode screenshot included in README(Will Add as soon as I have better wifi)
+Part 4 — LayoutBuilder
+[ x ]  LayoutBuilder controls list vs grid at the 600px breakpoint
+[ x ]  Both layouts use the same _buildCard method — no duplicated itemBuilder logic
+[ x ]  childAspectRatio matches the value justified in Question 2
+[ x ]  Filter chip row remains above both layouts
+[ ]  Portrait (list) and landscape (grid) screenshots included in README(Will Add as soon as I have better wifi)
+Part 5 — Widget extraction
+[ x ]  Extracted widget is const-constructible
+[ x ]  Extracted widget uses only theme colours
+[ x ]  JobCard uses the extracted widget — no inline duplication
+[ x ]  Extraction satisfies at least two of the three criteria from Question 4
+[ x ]  README confirms which criteria are met
