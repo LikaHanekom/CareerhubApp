@@ -37,6 +37,10 @@ class HomeScreen extends StatelessWidget {
     ),
   ];
 
+  Widget _buildCard(BuildContext context, int index) {
+    return JobCard(job: _jobs[index]);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -66,10 +70,27 @@ class HomeScreen extends StatelessWidget {
           ),
           // The Question 1 fix: Expanded gives ListView.builder a bounded height
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: _jobs.length,
-              itemBuilder: (context, index) => JobCard(job: _jobs[index]),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth >= 600) {
+                  return GridView.builder(
+                    padding: const EdgeInsets.all(8),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 0.87, // from Question 2
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                    ),
+                    itemCount: _jobs.length,
+                    itemBuilder: (context, index) => _buildCard(context, index),
+                  );
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: _jobs.length,
+                  itemBuilder: (context, index) => _buildCard(context, index),
+                );
+              },
             ),
           ),
         ],
