@@ -220,3 +220,60 @@ Part 5 — Widget extraction
 [ x ]  JobCard uses the extracted widget — no inline duplication
 [ x ]  Extraction satisfies at least two of the three criteria from Question 4
 [ x ]  README confirms which criteria are met
+
+
+
+# Assignment 1.3
+## Q1: `ref.watch` vs `ref.read`
+
+| Context | Recommended | Why? |
+| :--- | :--- | :--- |
+| **Inside `build()`** | `ref.watch` | Subscribes the widget to changes. Rebuilds the UI automatically when the provider state updates. |
+| **Inside Callbacks** | `ref.read` | Performs a one-time read. Prevents unnecessary subscriptions and follows Riverpod linting rules. |
+
+> **Warning:** Using `ref.read` inside `build()` will result in stale UI because the widget will not be notified of state changes. Conversely, using `ref.watch` inside a callback (e.g., `onPressed`) creates a wasteful, temporary subscription.
+
+---
+
+## Q2: Choosing the Right Provider
+
+| Data Type | Recommended Provider | Reasoning |
+| :--- | :--- | :--- |
+| **Job List (Async)** | `FutureProvider` or `AsyncNotifierProvider` | Handles async states automatically. Use `AsyncNotifier` if you need retry logic. |
+| **Filter Label** | `StateProvider<String>` | Ideal for simple, synchronous, mutable state. |
+| **Filtered List** | Computed `Provider` | **Derived state.** Should be calculated from the list and filter providers, not stored independently. |
+
+### The "Manual-Sync" Trap
+Storing a derived list in its own `StateProvider` is an anti-pattern. If you manually update the filtered list, you risk **state-synchronization bugs**.
+*   **The Issue:** If the raw job data updates (e.g., a refresh) but the filter logic isn't re-run, your UI will display "orphaned" data that contradicts the selected filter.
+*   **The Fix:** Always use a derived `Provider` that watches the raw data and the filter state to ensure the list is always calculated fresh.
+
+---
+
+## Q3: Handling `AsyncValue` States
+
+When consuming async data, always handle the three core states provided by `AsyncValue` to ensure a robust user experience:
+
+1.  **`.loading()`**: Show a centered `CircularProgressIndicator`. The user needs to know the app is active, not frozen.
+2.  **`.error()`**: Display an error icon, a short message, and a "Retry" button. Never fail silently.
+3.  **`.data()`**: Render the success UI.
+    *   *Crucial Sub-case:* **The Empty List.** Inside the `.data()` branch, check `if (data.isEmpty)`. If you don't render an explicit "No results found" message, the user cannot distinguish between a "no data" state and a "broken app" state.
+
+---
+
+## Q4: Fixing Test Breakages
+
+When tests fail, it is usually due to missing architecture or lifecycle timing:
+
+### 1. Missing `ProviderScope`
+`ConsumerWidget` requires a `ProviderScope` ancestor to look up providers.
+*   **The Error:** `ProviderScope not found`.
+*   **The Fix:** Wrap your widget in the test:
+    ```dart
+    tester.pumpWidget(ProviderScope(child: MaterialApp(home: HomeScreen())));
+    ```
+
+### 2. Async Loading Delays
+If your provider performs an async operation, the state will be `loading` immediately after `pumpWidget`.
+*   **The Error:** Your test checks for job cards before the `Future` completes.
+*   **The Fix:** Use `await tester.pumpAndSettle()` to wait for all timers and animations to complete before asserting the existence of your UI elements.
