@@ -4,16 +4,54 @@ import '../models/job.dart';
 import '../widgets/job_card.dart';
 import '../providers/job_providers.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   static const List<String> _filters = ['All', 'Remote', 'Full-time'];
 
-  Widget _buildCard(BuildContext context, Job job) {
-    return JobCard(job: job);
+  // Stretch C: TextEditingController has a lifecycle, so it needs
+  // ConsumerState (not a plain ConsumerWidget) to own and dispose it.
+  late final TextEditingController _searchController;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
   }
 
-  Widget _buildFilterChips(WidgetRef ref, String selectedFilter) {
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Widget _buildCard(BuildContext context, Job job) => JobCard(job: job);
+
+  Widget _buildSearchField() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      child: TextField(
+        controller: _searchController,
+        decoration: const InputDecoration(
+          hintText: 'Search job titles...',
+          prefixIcon: Icon(Icons.search),
+          border: OutlineInputBorder(),
+          isDense: true,
+        ),
+        onChanged: (value) {
+          // Callback context: read, not watch.
+          ref.read(searchQueryProvider.notifier).state = value;
+        },
+      ),
+    );
+  }
+
+  Widget _buildFilterChips(String selectedFilter) {
     return SizedBox(
       height: 48,
       child: SingleChildScrollView(
@@ -34,6 +72,33 @@ class HomeScreen extends ConsumerWidget {
             );
           }).toList(),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSortToggle(SortOrder sortOrder) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      child: Row(
+        children: [
+          const Text('Sort:'),
+          const SizedBox(width: 8),
+          ChoiceChip(
+            label: const Text('A–Z'),
+            selected: sortOrder == SortOrder.aToZ,
+            onSelected: (_) {
+              ref.read(sortOrderProvider.notifier).state = SortOrder.aToZ;
+            },
+          ),
+          const SizedBox(width: 8),
+          ChoiceChip(
+            label: const Text('Z–A'),
+            selected: sortOrder == SortOrder.zToA,
+            onSelected: (_) {
+              ref.read(sortOrderProvider.notifier).state = SortOrder.zToA;
+            },
+          ),
+        ],
       ),
     );
   }
@@ -68,17 +133,44 @@ class HomeScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final filteredJobsAsync = ref.watch(filteredJobsProvider);
+  Widget build(BuildContext context) {
+    // HomeScreen watches exactly ONE data provider (visibleJobsProvider) and
+    // three small "which option is selected" providers used only to drive
+    // chip/toggle highlighting. It has no idea filtering, searching, and
+    // sorting are three separate steps under the hood.
+    final visibleJobsAsync = ref.watch(visibleJobsProvider);
     final selectedFilter = ref.watch(selectedFilterProvider);
+    final sortOrder = ref.watch(sortOrderProvider);
+    final shouldFail = ref.watch(shouldFailProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('CareerHub')),
+      appBar: AppBar(
+        title: const Text('CareerHub'),
+        actions: [
+          // Stretch B: toggles the simulated failure and forces a reload.
+          IconButton(
+            tooltip: shouldFail
+                ? 'Failure mode ON — tap to turn off'
+                : 'Simulate a failed load',
+            icon: Icon(
+              shouldFail ? Icons.bug_report : Icons.bug_report_outlined,
+            ),
+            onPressed: () {
+              ref.read(shouldFailProvider.notifier).state = !shouldFail;
+              ref.invalidate(jobsProvider);
+            },
+          ),
+        ],
+      ),
       body: Column(
         children: [
-          _buildFilterChips(ref, selectedFilter),
+          _buildSearchField(),
+          const SizedBox(height: 8),
+          _buildFilterChips(selectedFilter),
+          _buildSortToggle(sortOrder),
+          const SizedBox(height: 4),
           Expanded(
-            child: filteredJobsAsync.when(
+            child: visibleJobsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (err, stack) => Center(
                 child: Column(
@@ -86,7 +178,10 @@ class HomeScreen extends ConsumerWidget {
                   children: [
                     const Icon(Icons.error_outline, size: 48),
                     const SizedBox(height: 8),
-                    const Text('Something went wrong loading jobs.'),
+                    Text(
+                      err.toString().replaceFirst('Exception: ', ''),
+                      textAlign: TextAlign.center,
+                    ),
                     const SizedBox(height: 12),
                     ElevatedButton(
                       onPressed: () => ref.invalidate(jobsProvider),

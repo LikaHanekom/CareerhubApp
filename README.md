@@ -277,3 +277,69 @@ When tests fail, it is usually due to missing architecture or lifecycle timing:
 If your provider performs an async operation, the state will be `loading` immediately after `pumpWidget`.
 *   **The Error:** Your test checks for job cards before the `Future` completes.
 *   **The Fix:** Use `await tester.pumpAndSettle()` to wait for all timers and animations to complete before asserting the existence of your UI elements.
+
+## All filter screenshot
+"All" selected — full list restored.
+
+![All filter selected, full job list](assets/screenshot_all_filter.png)
+
+## Filtered state screenshot
+"Remote" active — only matching jobs shown.
+
+![Remote filter active](assets/screenshot_remote_filter.png)
+
+## Loading screenshot
+![Loading spinner](assets/screenshot_loading.png)
+
+## Stretch A
+
+HomeScreen watches 4 providers directly: 
+visibleJobsProvider (data), selectedFilterProvider, sortOrderProvider,
+shouldFailProvider (all three just for UI highlighting/toggle state — not data).
+Adding the sort provider required no change to how ref.watch is called on the
+data side — HomeScreen still calls ref.watch(visibleJobsProvider) exactly as it
+called ref.watch(filteredJobsProvider) before; only the provider's internal 
+definition changed (it now composes one more layer).
+This shows the reactive graph is composable: consumers depend on a stable "shape"
+(an AsyncValue<List<Job>>), not on how many steps produced it. 
+You can insert new transformation stages in the middle of the pipeline without
+touching the widget that ultimately renders the result — 
+the same property that makes layered architectures maintainable in general 
+software design.
+
+## Stretch B
+
+### Bug button output
+"All" selected — full list restored.
+
+![Bug button output](assets/screenshot_bug.png)
+
+### Reload Screen
+"Remote" active — only matching jobs shown.
+
+![Reload Screen](assets/loading_after_retry.png)
+
+### After Retry
+![After Retry](assets/reload.png)
+
+shouldFailProvider combined with ref.invalidate(jobsProvider) forces 
+jobsProvider to re-run from scratch, which is why toggling it back off and 
+invalidating again produces success.
+
+## Stretch C
+
+ConsumerWidget has one build(context, ref) method and no mutable 
+instance state of its own — Riverpod rebuilds it whenever a watched provider 
+changes, and that's it. ConsumerStatefulWidget/ConsumerState gives you the full
+State lifecycle (initState, dispose, etc.) in addition to ref access, needed
+for anything that owns a resource with a lifecycle — a TextEditingController,
+AnimationController, ScrollController, or a subscription that must be 
+explicitly disposed.
+Genuinely necessary here because TextEditingController must be created once
+(not on every rebuild) and disposed when the widget is removed
+— ConsumerWidget has no dispose() to hook into.
+It would be overengineering to reach for ConsumerStatefulWidget for a 
+widget that has no controller/animation/subscription to manage — 
+e.g. if the search were driven purely by ref.watch(searchQueryProvider)
+with no local TextEditingController at all, staying a plain ConsumerWidget 
+would be simpler and avoid an unnecessary lifecycle to reason about.

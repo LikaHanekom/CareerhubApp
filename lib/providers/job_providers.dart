@@ -1,9 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/job.dart';
 
-// 1. The raw job list, loaded async with a simulated delay
+/// Stretch B — toggled by the AppBar bug icon to simulate a failed load.
+final shouldFailProvider = StateProvider<bool>((ref) => false);
+
+/// The raw job list, loaded async with a simulated network delay.
+/// Reads [shouldFailProvider] so the AppBar toggle can force the error branch.
 final jobsProvider = FutureProvider<List<Job>>((ref) async {
   await Future.delayed(const Duration(seconds: 1, milliseconds: 500));
+
+  final shouldFail = ref.watch(shouldFailProvider);
+  if (shouldFail) {
+    throw Exception('Could not load jobs. Check your connection and try again.');
+  }
 
   return [
     Job.remote(
@@ -37,20 +46,52 @@ final jobsProvider = FutureProvider<List<Job>>((ref) async {
   ];
 });
 
-// 2. Selected filter label
+/// Selected filter chip label.
 final selectedFilterProvider = StateProvider<String>((ref) => 'All');
 
-// 3. Derived, filtered list
+/// Stretch A — sort order, as its own independent piece of state.
+enum SortOrder { aToZ, zToA }
+
+final sortOrderProvider = StateProvider<SortOrder>((ref) => SortOrder.aToZ);
+
+/// Stretch C — free-text search query.
+final searchQueryProvider = StateProvider<String>((ref) => '');
+
+/// Filtered list — derived from jobs + filter only.
 final filteredJobsProvider = Provider<AsyncValue<List<Job>>>((ref) {
   final jobsAsync = ref.watch(jobsProvider);
   final selectedFilter = ref.watch(selectedFilterProvider);
 
   return jobsAsync.whenData((jobs) {
     if (selectedFilter == 'All') return jobs;
+    return jobs
+        .where((job) =>
+    job.employmentType == selectedFilter || job.location == selectedFilter)
+        .toList();
+  });
+});
 
-    return jobs.where((job) {
-      return job.employmentType == selectedFilter ||
-          job.location == selectedFilter;
-    }).toList();
+///  Filtered + searched — derived from [filteredJobsProvider] + search query.
+final searchedJobsProvider = Provider<AsyncValue<List<Job>>>((ref) {
+  final filteredAsync = ref.watch(filteredJobsProvider);
+  final query = ref.watch(searchQueryProvider).trim().toLowerCase();
+
+  return filteredAsync.whenData((jobs) {
+    if (query.isEmpty) return jobs;
+    return jobs.where((job) => job.title.toLowerCase().contains(query)).toList();
+  });
+});
+
+///  Filtered + searched + sorted — the ONLY data provider HomeScreen watches.
+final visibleJobsProvider = Provider<AsyncValue<List<Job>>>((ref) {
+  final searchedAsync = ref.watch(searchedJobsProvider);
+  final sortOrder = ref.watch(sortOrderProvider);
+
+  return searchedAsync.whenData((jobs) {
+    final sorted = [...jobs];
+    sorted.sort((a, b) => sortOrder == SortOrder.aToZ
+        ? a.title.compareTo(b.title)
+        : b.title.compareTo(a.title));
+    return sorted;
   });
 });
