@@ -1,96 +1,101 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/job.dart';
 import '../widgets/job_card.dart';
+import '../providers/job_providers.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
-  static final List<Job> _jobs = [
-    Job(
-      title: 'Flutter Developer',
-      company: 'CareerHub',
-      location: 'Pretoria',
-      salary: 35000,
-      employmentType: 'Full-time',
-      isOpen: true,
-      closingDate: DateTime(2026, 8, 1),
-      description: 'Build mobile apps.',
-    ),
-    Job(
-      title: 'Backend Intern',
-      company: 'DataCo',
-      location: 'Johannesburg',
-      employmentType: 'Internship',
-      isOpen: true,
-    ),
-    Job.closed(
-      title: 'Product Designer',
-      company: 'PixelWorks',
-      location: 'Cape Town',
-      employmentType: 'Full-time',
-    ),
-    Job.remote(
-      title: 'DevOps Engineer',
-      company: 'CloudNine',
-      employmentType: 'Contract',
-      salary: 42000,
-    ),
-  ];
+  static const List<String> _filters = ['All', 'Remote', 'Full-time'];
 
-  Widget _buildCard(BuildContext context, int index) {
-    return JobCard(job: _jobs[index]);
+  Widget _buildCard(BuildContext context, Job job) {
+    return JobCard(job: job);
+  }
+
+  Widget _buildFilterChips(WidgetRef ref, String selectedFilter) {
+    return SizedBox(
+      height: 48,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(
+          children: _filters.map((label) {
+            final isLast = label == _filters.last;
+            return Padding(
+              padding: EdgeInsets.only(right: isLast ? 0 : 8),
+              child: FilterChip(
+                label: Text(label),
+                selected: selectedFilter == label,
+                onSelected: (_) {
+                  ref.read(selectedFilterProvider.notifier).state = label;
+                },
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildJobList(List<Job> jobs) {
+    if (jobs.isEmpty) {
+      return const Center(child: Text('No jobs match this filter.'));
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 600) {
+          return GridView.builder(
+            padding: const EdgeInsets.all(8),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 0.87,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+            ),
+            itemCount: jobs.length,
+            itemBuilder: (context, index) => _buildCard(context, jobs[index]),
+          );
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          itemCount: jobs.length,
+          itemBuilder: (context, index) => _buildCard(context, jobs[index]),
+        );
+      },
+    );
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final filteredJobsAsync = ref.watch(filteredJobsProvider);
+    final selectedFilter = ref.watch(selectedFilterProvider);
+
     return Scaffold(
       appBar: AppBar(title: const Text('CareerHub')),
       body: Column(
         children: [
-          // Filter chip row — fix for Question 1: SizedBox gives it bounded height
-          SizedBox(
-            height: 48,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                children: const [
-                  Padding(
-                    padding: EdgeInsets.only(right: 8),
-                    child: Chip(label: Text('All')),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.only(right: 8),
-                    child: Chip(label: Text('Remote')),
-                  ),
-                  Chip(label: Text('Full-time')),
-                ],
-              ),
-            ),
-          ),
-          // The Question 1 fix: Expanded gives ListView.builder a bounded height
+          _buildFilterChips(ref, selectedFilter),
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                if (constraints.maxWidth >= 600) {
-                  return GridView.builder(
-                    padding: const EdgeInsets.all(8),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 0.87, // from Question 2
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
+            child: filteredJobsAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, stack) => Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error_outline, size: 48),
+                    const SizedBox(height: 8),
+                    const Text('Something went wrong loading jobs.'),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: () => ref.invalidate(jobsProvider),
+                      child: const Text('Retry'),
                     ),
-                    itemCount: _jobs.length,
-                    itemBuilder: (context, index) => _buildCard(context, index),
-                  );
-                }
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: _jobs.length,
-                  itemBuilder: (context, index) => _buildCard(context, index),
-                );
-              },
+                  ],
+                ),
+              ),
+              data: (jobs) => _buildJobList(jobs),
             ),
           ),
         ],
