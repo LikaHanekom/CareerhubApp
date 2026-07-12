@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
-
-void main() => runApp(const CareerHubApp());
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+//wrap in ProvideScope
+void main() => runApp(const ProviderScope(child : CareerHubApp()));
 
 class CareerHubApp extends StatelessWidget {
   const CareerHubApp({super.key});
