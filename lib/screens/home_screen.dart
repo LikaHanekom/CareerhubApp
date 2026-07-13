@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/job.dart';
 import '../widgets/job_card.dart';
 import '../providers/job_providers.dart';
+import 'package:go_router/go_router.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -30,7 +31,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.dispose();
   }
 
-  Widget _buildCard(BuildContext context, Job job) => JobCard(job: job);
+  Widget _buildCard(BuildContext context, Job job) => JobCard(
+    job: job,
+    onTap: () => context.push('/jobs/${job.id}'),
+  );
 
   Widget _buildSearchField() {
     return Padding(

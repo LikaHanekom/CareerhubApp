@@ -1,4 +1,5 @@
 class Job {
+  final int id;
   final String title;
   final String company;
   final String location;
@@ -9,6 +10,7 @@ class Job {
   final String? description;
 
   const Job({
+    required this.id,
     required this.title,
     required this.company,
     required this.location,
@@ -21,6 +23,7 @@ class Job {
 
   /// A job posted with no fixed physical location.
   Job.remote({
+    required this.id,
     required this.title,
     required this.company,
     this.salary,
@@ -32,6 +35,7 @@ class Job {
 
   /// An employer manually closing a listing (e.g. position filled).
   Job.closed({
+    required this.id,
     required this.title,
     required this.company,
     required this.location,
@@ -50,13 +54,13 @@ class Job {
 
   @override
   String toString() {
-    return 'Job(title: $title, company: $company, location: $location, '
+    return 'Job(id: $id, title: $title, company: $company, location: $location, '
         'isOpen: $isOpen, salary: $displaySalary, '
         'closingDate: ${closingDate ?? "none"})';
   }
 
-  //
   Job copyWith({
+    int? id,
     String? title,
     String? company,
     String? location,
@@ -67,6 +71,7 @@ class Job {
     String? description,
   }) {
     return Job(
+      id: id ?? this.id,
       title: title ?? this.title,
       company: company ?? this.company,
       location: location ?? this.location,
@@ -77,6 +82,7 @@ class Job {
       description: description ?? this.description,
     );
   }
+
   bool matches(String query) {
     final q = query.toLowerCase();
     return title.toLowerCase().contains(q) ||
