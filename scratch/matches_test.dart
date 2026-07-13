@@ -2,14 +2,14 @@ import '../lib/models/job.dart';
 
 void main() {
   final jobs = [
-    Job(title: 'Flutter Developer', company: 'CareerHub', location: 'Pretoria',
+    Job(id: 1, title: 'Flutter Developer', company: 'CareerHub', location: 'Pretoria',
         employmentType: 'Full-time', isOpen: true),
-    Job(title: 'Backend Intern', company: 'DataCo', location: 'Johannesburg',
+    Job(id: 2, title: 'Backend Intern', company: 'DataCo', location: 'Johannesburg',
         employmentType: 'Internship', isOpen: true),
-    Job.closed(title: 'Product Designer', company: 'PixelWorks', location: 'Cape Town',
+    Job.closed(id: 3, title: 'Product Designer', company: 'PixelWorks', location: 'Cape Town',
         employmentType: 'Full-time'),
-    Job.remote(title: 'DevOps Engineer', company: 'CloudNine', employmentType: 'Contract'),
-    Job(title: 'Data Analyst', company: 'InsightWorks', location: 'Durban',
+    Job.remote(id: 4, title: 'DevOps Engineer', company: 'CloudNine', employmentType: 'Contract'),
+    Job(id: 5, title: 'Data Analyst', company: 'InsightWorks', location: 'Durban',
         employmentType: 'Full-time', isOpen: true),
   ];
 

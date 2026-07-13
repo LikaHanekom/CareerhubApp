@@ -1,35 +1,33 @@
-// Widget tests for CareerHub's HomeScreen.
+// Widget tests for CareerHub.
 //
-// HomeScreen is now a ConsumerWidget backed by Riverpod providers, and its
-// job list loads asynchronously with a simulated network delay. Both facts
-// changed how this test has to be written compared to the original
-// StatelessWidget + static-list version:
+// Two structural changes since the router was added:
 //
-//  1. ConsumerWidget requires a ProviderScope ancestor to resolve providers,
-//     so every pumped widget tree below must be wrapped in one.
-//  2. The job list is `loading` for ~1.5s after the first frame, so a single
-//     tester.pump() is not enough to reach the data state — we must advance
-//     time with pumpAndSettle() before asserting on job cards.
+//  1. HomeScreen is no longer pumped directly as `home:` — it's reached by
+//     routing to /jobs through MaterialApp.router. We pump CareerHubApp
+//     itself (which owns the GoRouter) rather than wrapping HomeScreen in a
+//     bare MaterialApp, since HomeScreen's card taps now depend on being
+//     inside a Router (context.push needs a GoRouter ancestor).
+//  2. initialLocation is '/jobs', and HomeScreen is the root builder for the
+//     Jobs branch, so the app still lands on the jobs list with no extra
+//     test setup — the loading/data assertions below are unchanged from
+//     before the router was added.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:careerhub/screens/home_screen.dart';
+import 'package:careerhub/main.dart';
 import 'package:careerhub/widgets/job_card.dart';
 
 void main() {
   testWidgets(
-    'shows loading spinner, then renders job cards with status badges',
+    'shows loading spinner, then renders job cards, status badges, and nav bar',
         (WidgetTester tester) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(home: HomeScreen()),
-        ),
+        const ProviderScope(child: CareerHubApp()),
       );
 
-      // Fix for failure mode 2 (async loading): immediately after the first
-      // frame, jobsProvider is still in its loading state.
+      // Immediately after the first frame, jobsProvider is still loading.
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
       // Advance past the simulated Future.delayed in jobsProvider.
@@ -49,28 +47,29 @@ void main() {
       expect(find.text('Open'), findsNWidgets(4));
       expect(find.text('Closed'), findsNothing);
 
-      // Fit (filter) chips render.
+      // Filter chips render.
       expect(find.widgetWithText(FilterChip, 'All'), findsOneWidget);
       expect(find.widgetWithText(FilterChip, 'Remote'), findsOneWidget);
       expect(find.widgetWithText(FilterChip, 'Full-time'), findsOneWidget);
+
+      // NavigationBar destinations — new since the router was added.
+      // No collision: neither 'Jobs' nor 'Saved' matches any existing chip
+      // or badge label above.
+      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.widgetWithText(NavigationDestination, 'Jobs'), findsOneWidget);
+      expect(find.widgetWithText(NavigationDestination, 'Saved'), findsOneWidget);
     },
   );
 
   testWidgets(
     'tapping the Remote filter chip narrows the job list',
         (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(home: HomeScreen()),
-        ),
-      );
-
+      await tester.pumpWidget(const ProviderScope(child: CareerHubApp()));
       await tester.pumpAndSettle();
 
       await tester.tap(find.widgetWithText(FilterChip, 'Remote'));
-      await tester.pump(); // filter update is synchronous, no delay to wait out
+      await tester.pump();
 
-      // Flutter Developer and UI Designer are the two Job.remote() entries.
       expect(find.byType(JobCard), findsNWidgets(2));
       expect(find.text('Flutter Developer'), findsOneWidget);
       expect(find.text('UI Designer'), findsOneWidget);
@@ -82,12 +81,7 @@ void main() {
   testWidgets(
     'tapping All after a filter restores the full job list',
         (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(home: HomeScreen()),
-        ),
-      );
-
+      await tester.pumpWidget(const ProviderScope(child: CareerHubApp()));
       await tester.pumpAndSettle();
 
       await tester.tap(find.widgetWithText(FilterChip, 'Full-time'));
@@ -97,6 +91,22 @@ void main() {
       await tester.tap(find.widgetWithText(FilterChip, 'All'));
       await tester.pump();
       expect(find.byType(JobCard), findsNWidgets(4));
+    },
+  );
+
+  testWidgets(
+    'tapping a job card navigates to its detail screen by id',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(const ProviderScope(child: CareerHubApp()));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Backend Engineer').first);
+      await tester.pumpAndSettle();
+
+      // Detail screen shows full job info; NavigationBar is hidden.
+      expect(find.text('Job Details'), findsOneWidget);
+      expect(find.text('Nova Systems'), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
     },
   );
 }
