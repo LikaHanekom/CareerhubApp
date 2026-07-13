@@ -401,3 +401,14 @@ the same GoRouter config), not a bare screen.
 Since initialLocation is /jobs, the app does land on the jobs list by default — matching existing assertions 
 — so no change is needed to what screen the test expects, only to how the widget tree is constructed to get there
 
+### Filter Preserved Sequence
+"All" selected — full list restored.
+
+![Filter Preserved Sequence](assets/screenshot%20fliter-preserved%20sequence.png)
+
+### detail-screen
+
+![detail-screen](assets/screenshot-detail-screen.png)
+
+### tab-state
+![Tab-State](assets/screenshot-tab-state.png)
