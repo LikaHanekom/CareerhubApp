@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
-import 'screens/home_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-//wrap in ProvideScope
-void main() => runApp(const ProviderScope(child : CareerHubApp()));
+import 'router/app_router.dart';
 
-class CareerHubApp extends StatelessWidget {
+void main() => runApp(const ProviderScope(child: CareerHubApp()));
+
+class CareerHubApp extends ConsumerWidget {
   const CareerHubApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final router = ref.watch(routerProvider);
+
+    return MaterialApp.router(
       title: 'CareerHub',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
@@ -23,8 +25,7 @@ class CareerHubApp extends StatelessWidget {
         useMaterial3: true,
       ),
       themeMode: ThemeMode.system,
-      home: const HomeScreen(),
+      routerConfig: router,
     );
   }
 }
-

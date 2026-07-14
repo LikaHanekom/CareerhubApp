@@ -343,3 +343,72 @@ widget that has no controller/animation/subscription to manage —
 e.g. if the search were driven purely by ref.watch(searchQueryProvider)
 with no local TextEditingController at all, staying a plain ConsumerWidget 
 would be simpler and avoid an unnecessary lifecycle to reason about.
+
+# Assignment 1.4
+## Question 1 - Route  tree
+/                                    (redirects to /jobs)
+├── StatefulShellRoute.indexedStack  (NavigationBar lives here)
+│   ├── Branch 0 → /jobs                    [INSIDE shell]  HomeScreen
+│   │       └── /jobs/:id                   [INSIDE shell]  JobDetailScreen
+│   └── Branch 1 → /saved                   [INSIDE shell]  SavedScreen
+
+Inside or outside the shell? Job detail goes inside the shell (NavigationBar stays visible).
+Real-world reference: LinkedIn — tapping a job listing opens the full detail page, but the bottom 
+tab bar stays visible the entire time, so you can jump straight to "Messages" without backing out 
+of the listing first. That matches how people actually browse jobs: skim, open one, bounce to another tab,
+come back. Hiding the nav bar (like Instagram does for a post) would force an unnecessary "back" tap just to switch tabs.
+
+Initial URL: /jobs. Third job's detail URL: /jobs/3 (assuming job id 3).
+Back button from detail: pops the /jobs/:id route off that branch's stack, landing back on
+/jobs with the branch's scroll position and filter state intact, because StatefulShellRoute.indexedStack preserves 
+each branch's navigator independently.
+Opened directly to /jobs/3 via notification, then back pressed: this is the tricky case. 
+If /jobs/3 is the only thing ever pushed onto that branch's stack (no /jobs beneath it),
+pressing back has nothing to pop to within the branch, so GoRouter falls back to the branch's 
+declared root (/jobs) — the user lands on the full jobs list. This works because /jobs/3 is nested 
+under /jobs in the tree (not a standalone top-level route), so the router always knows what to fall back to.
+
+## Question 2 - Push vs Go
+| Action               | Method      | Why? |
+|:---------------------|:------------| :--- |
+| **a) Tap job card → detail** | `context.push()` | User expects "back" to return to the list they were browsing — a stack, not a replacement |
+| **b) Tap "Saved" tab** | `navigationShell.goBranch() (a go-style replace)`  | Tabs are peers, not a drill-down — there's no "back" concept between top-level tabs |
+| **c) Log Out** | `context.go('/login')`  | Explicitly want to wipe navigation history so back can't return to authenticated screens. |
+| **d) "Browse Similar Roles"** | `context.go('/jobs?filter=...')`  | The wrong choice is context.push() — it would stack a second jobs list on top of the first, so back would show one jobs list, then back again shows another nearly-identical jobs list, which is confusing and makes back feel broken |
+
+## Question 3 - IDs vs Index
+Scenario 1 (filter-related): Full list shows jobs [A, B, C, D] at indices [0,1,2,3]. User filters to "Remote,
+" which happens to be [B, D] — now index 0 means job B, not job A. If a URL was built from index 0 before filtering 
+and reused after, it now points at the wrong job entirely.
+Scenario 2: A background refresh (e.g., after Stretch B's retry) returns a reordered list 
+— sorting by "Z–A" instead of "A–Z" flips every index's meaning. A URL like /jobs/0 captured before the 
+sort no longer refers to the same job after it.
+Push notification paragraph: for a position-based URL to work, the app would need to guarantee the exact same job list,
+in the exact same order, under the exact same filter and sort settings, at the moment the notification is tapped as existed
+when the notification was generated — potentially hours or days earlier, on a server that has no idea what filter the user
+last had selected on their phone. Since job listings can be added, removed, filtered, or resorted between those two moments, 
+and the notification itself carries no memory of what UI state produced that index, there is no way to guarantee it — which is 
+exactly why a stable, filter-independent id is required.
+
+## Question 4 - Test Breakage
+
+MaterialApp.router uses a Router widget internally instead of a Navigator fed by home:.
+This means the widget tree the test engine walks no longer has a simple single "home" screen at the root
+— it's resolved dynamically by the router's initialLocation and route table. Practically: the test can no 
+longer pumpWidget(HomeScreen()) in isolation and expect the NavigationBar/shell to exist around it, because 
+the shell only appears when the router builds it. The test must pump the actual router-backed app (or a MaterialApp.router using 
+the same GoRouter config), not a bare screen.
+Since initialLocation is /jobs, the app does land on the jobs list by default — matching existing assertions 
+— so no change is needed to what screen the test expects, only to how the widget tree is constructed to get there
+
+### Filter Preserved Sequence
+"All" selected — full list restored.
+
+![Filter Preserved Sequence](assets/screenshot%20fliter-preserved%20sequence.png)
+
+### detail-screen
+
+![detail-screen](assets/screenshot-detail-screen.png)
+
+### tab-state
+![Tab-State](assets/screenshot-tab-state.png)
