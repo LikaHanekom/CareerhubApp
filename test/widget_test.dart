@@ -11,6 +11,15 @@
 //     Jobs branch, so the app still lands on the jobs list with no extra
 //     test setup — the loading/data assertions below are unchanged from
 //     before the router was added.
+//
+// Window size note: _buildJobList's LayoutBuilder switches to a 2-column
+// GridView at width >= 600, and both GridView.builder and ListView.builder
+// only construct the items that fit in the current viewport (they're lazy).
+// Adding the bottomNavigationBar shrank the vertical space available to the
+// list, which meant only 2 of 4 cards were being built at the default
+// 800x600 test window. Pinning a narrow, tall window keeps us on the
+// ListView branch with enough height that all cards are actually built,
+// regardless of what chrome (nav bar, etc.) is added around the list later.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,13 +28,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:careerhub/main.dart';
 import 'package:careerhub/widgets/job_card.dart';
 
+Future<void> pumpCareerHubApp(WidgetTester tester) async {
+  tester.view.physicalSize = const Size(400, 2400);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+
+  await tester.pumpWidget(const ProviderScope(child: CareerHubApp()));
+}
+
 void main() {
   testWidgets(
     'shows loading spinner, then renders job cards, status badges, and nav bar',
         (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const ProviderScope(child: CareerHubApp()),
-      );
+      await pumpCareerHubApp(tester);
 
       // Immediately after the first frame, jobsProvider is still loading.
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -52,9 +68,7 @@ void main() {
       expect(find.widgetWithText(FilterChip, 'Remote'), findsOneWidget);
       expect(find.widgetWithText(FilterChip, 'Full-time'), findsOneWidget);
 
-      // NavigationBar destinations — new since the router was added.
-      // No collision: neither 'Jobs' nor 'Saved' matches any existing chip
-      // or badge label above.
+      // NavigationBar destinations.
       expect(find.byType(NavigationBar), findsOneWidget);
       expect(find.widgetWithText(NavigationDestination, 'Jobs'), findsOneWidget);
       expect(find.widgetWithText(NavigationDestination, 'Saved'), findsOneWidget);
@@ -64,7 +78,7 @@ void main() {
   testWidgets(
     'tapping the Remote filter chip narrows the job list',
         (WidgetTester tester) async {
-      await tester.pumpWidget(const ProviderScope(child: CareerHubApp()));
+      await pumpCareerHubApp(tester);
       await tester.pumpAndSettle();
 
       await tester.tap(find.widgetWithText(FilterChip, 'Remote'));
@@ -81,7 +95,7 @@ void main() {
   testWidgets(
     'tapping All after a filter restores the full job list',
         (WidgetTester tester) async {
-      await tester.pumpWidget(const ProviderScope(child: CareerHubApp()));
+      await pumpCareerHubApp(tester);
       await tester.pumpAndSettle();
 
       await tester.tap(find.widgetWithText(FilterChip, 'Full-time'));
@@ -97,13 +111,12 @@ void main() {
   testWidgets(
     'tapping a job card navigates to its detail screen by id',
         (WidgetTester tester) async {
-      await tester.pumpWidget(const ProviderScope(child: CareerHubApp()));
+      await pumpCareerHubApp(tester);
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Backend Engineer').first);
       await tester.pumpAndSettle();
 
-      // Detail screen shows full job info; NavigationBar is hidden.
       expect(find.text('Job Details'), findsOneWidget);
       expect(find.text('Nova Systems'), findsOneWidget);
       expect(find.byType(NavigationBar), findsNothing);
