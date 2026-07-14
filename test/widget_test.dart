@@ -1,32 +1,77 @@
 // Widget tests for CareerHub.
 //
-// Two structural changes since the router was added:
+// jobsNotifierProvider now calls a real HTTP API via Dio. There is no
+// server available when `flutter test` runs, so this test overrides
+// jobsNotifierProvider with a fake notifier that returns the same
+// hardcoded jobs the assertions below have always checked against — no
+// network call is made during the test run.
 //
-//  1. HomeScreen is no longer pumped directly as `home:` — it's reached by
-//     routing to /jobs through MaterialApp.router. We pump CareerHubApp
-//     itself (which owns the GoRouter) rather than wrapping HomeScreen in a
-//     bare MaterialApp, since HomeScreen's card taps now depend on being
-//     inside a Router (context.push needs a GoRouter ancestor).
-//  2. initialLocation is '/jobs', and HomeScreen is the root builder for the
-//     Jobs branch, so the app still lands on the jobs list with no extra
-//     test setup — the loading/data assertions below are unchanged from
-//     before the router was added.
+// Note on the fake notifier's class: `_$JobsNotifier` (the generated base
+// class) is library-private — it's only visible inside jobs_notifier.dart
+// and its .g.dart part file, not from this file. So the fake extends the
+// public `JobsNotifier` class instead (which itself extends
+// `_$JobsNotifier`), overriding build() the same way the real notifier
+// does. This is the standard pattern for riverpod_generator overrides in
+// tests.
 //
-// Window size note: _buildJobList's LayoutBuilder switches to a 2-column
+// Window size note: HomeScreen's LayoutBuilder switches to a 2-column
 // GridView at width >= 600, and both GridView.builder and ListView.builder
-// only construct the items that fit in the current viewport (they're lazy).
-// Adding the bottomNavigationBar shrank the vertical space available to the
-// list, which meant only 2 of 4 cards were being built at the default
-// 800x600 test window. Pinning a narrow, tall window keeps us on the
-// ListView branch with enough height that all cards are actually built,
-// regardless of what chrome (nav bar, etc.) is added around the list later.
+// only build the items currently in the viewport. A narrow, tall window
+// keeps the list on the single-column ListView branch with room for all
+// cards to actually be built.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:careerhub/main.dart';
+import 'package:careerhub/models/job.dart';
+import 'package:careerhub/providers/jobs_notifier.dart';
 import 'package:careerhub/widgets/job_card.dart';
+
+class _FakeJobsNotifier extends JobsNotifier {
+  @override
+  Future<List<Job>> build() async {
+    // Same delay as the original hardcoded provider, so the loading-state
+    // assertion (spinner visible immediately after pump) still holds.
+    await Future.delayed(const Duration(seconds: 1, milliseconds: 500));
+
+    return [
+      Job.remote(
+        id: '1',
+        title: 'Flutter Developer',
+        company: 'Kaya Digital',
+        employmentType: 'Full-time',
+        salary: 45000,
+      ),
+      Job(
+        id: '2',
+        title: 'Backend Engineer',
+        company: 'Nova Systems',
+        location: 'Cape Town',
+        employmentType: 'Full-time',
+        isOpen: true,
+        salary: 52000,
+      ),
+      Job.remote(
+        id: '3',
+        title: 'UI Designer',
+        company: 'Studio North',
+        employmentType: 'Contract',
+        salary: 38000,
+      ),
+      Job(
+        id: '4',
+        title: 'QA Analyst',
+        company: 'Kaya Digital',
+        location: 'Johannesburg',
+        employmentType: 'Full-time',
+        isOpen: true,
+        salary: 30000,
+      ),
+    ];
+  }
+}
 
 Future<void> pumpCareerHubApp(WidgetTester tester) async {
   tester.view.physicalSize = const Size(400, 2400);
@@ -34,7 +79,14 @@ Future<void> pumpCareerHubApp(WidgetTester tester) async {
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
 
-  await tester.pumpWidget(const ProviderScope(child: CareerHubApp()));
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        jobsNotifierProvider.overrideWith(() => _FakeJobsNotifier()),
+      ],
+      child: const CareerHubApp(),
+    ),
+  );
 }
 
 void main() {
@@ -43,32 +95,27 @@ void main() {
         (WidgetTester tester) async {
       await pumpCareerHubApp(tester);
 
-      // Immediately after the first frame, jobsProvider is still loading.
+      // Immediately after the first frame, the fake notifier is still
+      // "loading" — no network call, but the same artificial delay.
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
-      // Advance past the simulated Future.delayed in jobsProvider.
       await tester.pumpAndSettle();
 
-      // Spinner gone, cards present.
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.byType(JobCard), findsNWidgets(4));
 
-      // Job titles render.
       expect(find.text('Flutter Developer'), findsOneWidget);
       expect(find.text('Backend Engineer'), findsOneWidget);
       expect(find.text('UI Designer'), findsOneWidget);
       expect(find.text('QA Analyst'), findsOneWidget);
 
-      // Status badges: all four sample jobs are isOpen: true.
       expect(find.text('Open'), findsNWidgets(4));
       expect(find.text('Closed'), findsNothing);
 
-      // Filter chips render.
       expect(find.widgetWithText(FilterChip, 'All'), findsOneWidget);
       expect(find.widgetWithText(FilterChip, 'Remote'), findsOneWidget);
       expect(find.widgetWithText(FilterChip, 'Full-time'), findsOneWidget);
 
-      // NavigationBar destinations.
       expect(find.byType(NavigationBar), findsOneWidget);
       expect(find.widgetWithText(NavigationDestination, 'Jobs'), findsOneWidget);
       expect(find.widgetWithText(NavigationDestination, 'Saved'), findsOneWidget);

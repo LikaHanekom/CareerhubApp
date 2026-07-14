@@ -1,54 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/job.dart';
-
-/// Stretch B — toggled by the AppBar bug icon to simulate a failed load.
-final shouldFailProvider = StateProvider<bool>((ref) => false);
-
-/// The raw job list, loaded async with a simulated network delay.
-/// Reads [shouldFailProvider] so the AppBar toggle can force the error branch.
-final jobsProvider = FutureProvider<List<Job>>((ref) async {
-  await Future.delayed(const Duration(seconds: 1, milliseconds: 500));
-
-  final shouldFail = ref.watch(shouldFailProvider);
-  if (shouldFail) {
-    throw Exception('Could not load jobs. Check your connection and try again.');
-  }
-
-  return [
-    Job.remote(
-      id: '1',
-      title: 'Flutter Developer',
-      company: 'Kaya Digital',
-      employmentType: 'Full-time',
-      salary: 45000,
-    ),
-    Job(
-      id: '2',
-      title: 'Backend Engineer',
-      company: 'Nova Systems',
-      location: 'Cape Town',
-      employmentType: 'Full-time',
-      isOpen: true,
-      salary: 52000,
-    ),
-    Job.remote(
-      id: '3',
-      title: 'UI Designer',
-      company: 'Studio North',
-      employmentType: 'Contract',
-      salary: 38000,
-    ),
-    Job(
-      id: '4',
-      title: 'QA Analyst',
-      company: 'Kaya Digital',
-      location: 'Johannesburg',
-      employmentType: 'Full-time',
-      isOpen: true,
-      salary: 30000,
-    ),
-  ];
-});
+import 'jobs_notifier.dart';
 
 /// Selected filter chip label.
 final selectedFilterProvider = StateProvider<String>((ref) => 'All');
@@ -61,21 +13,22 @@ final sortOrderProvider = StateProvider<SortOrder>((ref) => SortOrder.aToZ);
 /// Stretch C — free-text search query.
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
-/// Filtered list — derived from jobs + filter only.
+/// Filtered list — derived from the live jobs + filter only.
 final filteredJobsProvider = Provider<AsyncValue<List<Job>>>((ref) {
-  final jobsAsync = ref.watch(jobsProvider);
+  final jobsAsync = ref.watch(jobsNotifierProvider);
   final selectedFilter = ref.watch(selectedFilterProvider);
 
   return jobsAsync.whenData((jobs) {
     if (selectedFilter == 'All') return jobs;
     return jobs
         .where((job) =>
-    job.employmentType == selectedFilter || job.location == selectedFilter)
+    job.employmentType == selectedFilter ||
+        job.location == selectedFilter)
         .toList();
   });
 });
 
-///  Filtered + searched — derived from [filteredJobsProvider] + search query.
+/// Filtered + searched — derived from [filteredJobsProvider] + search query.
 final searchedJobsProvider = Provider<AsyncValue<List<Job>>>((ref) {
   final filteredAsync = ref.watch(filteredJobsProvider);
   final query = ref.watch(searchQueryProvider).trim().toLowerCase();
@@ -86,7 +39,7 @@ final searchedJobsProvider = Provider<AsyncValue<List<Job>>>((ref) {
   });
 });
 
-///  Filtered + searched + sorted — the ONLY data provider HomeScreen watches.
+/// Filtered + searched + sorted — the ONLY data provider HomeScreen watches.
 final visibleJobsProvider = Provider<AsyncValue<List<Job>>>((ref) {
   final searchedAsync = ref.watch(searchedJobsProvider);
   final sortOrder = ref.watch(sortOrderProvider);

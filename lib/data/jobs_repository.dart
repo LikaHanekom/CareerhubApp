@@ -10,7 +10,7 @@ part 'jobs_repository.g.dart';
 Dio dio(Ref ref) {
   const baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:5011/api/',
+    defaultValue: 'http://10.0.2.2:5011/api/v1/',
   );
 
   final dio = Dio(

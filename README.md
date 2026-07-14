@@ -492,3 +492,16 @@ So the test does **not** throw an unhandled exception — it fails as an ordinar
 1. Whether the real HTTP call to the actual CareerHub API succeeds and returns correctly-shaped data — that's the job of an integration test (or manual verification) run against a live or mocked server.
 2. Whether `JobDto.fromJson` / `Job.fromDto` correctly parse real API JSON, including edge cases like null salaries or unexpected enum values — that's the job of a focused **unit test** on the DTO/mapping layer, not a widget test.
 
+### LogInterceptor Output
+![LogInterceptor showing request and 200 response](docs/screenshots/log-interceptor.png)
+
+### Live Jobs List
+![Jobs list populated from real API](docs/screenshots/live-jobs.png)
+
+### Error State
+![Error state after stopping the API](docs/screenshots/error-state.png)
+
+### Filter Preserved on Back Navigation
+![Filter selected](docs/screenshots/filter-1-selected.png)
+![Detail screen opened](docs/screenshots/filter-2-detail.png)
+![Back navigation, filter still selected](docs/screenshots/filter-3-preserved.png)
