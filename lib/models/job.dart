@@ -1,5 +1,7 @@
+import '../data/job_dto.dart';
+
 class Job {
-  final int id;
+  final String id;
   final String title;
   final String company;
   final String location;
@@ -60,7 +62,7 @@ class Job {
   }
 
   Job copyWith({
-    int? id,
+    String? id,
     String? title,
     String? company,
     String? location,
@@ -88,5 +90,40 @@ class Job {
     return title.toLowerCase().contains(q) ||
         company.toLowerCase().contains(q) ||
         location.toLowerCase().contains(q);
+  }
+
+  factory Job.fromDto(JobDto dto) {
+    double? salary = dto.salaryMin ?? dto.salaryMax;
+
+    return Job(
+      id: dto.id,
+      title: dto.title,
+      company: dto.company,
+      location: dto.location,
+      salary: salary,
+      employmentType: _mapEmploymentType(dto.type),
+      isOpen: dto.isActive,
+      closingDate: dto.expiresAt,
+      description: dto.description,
+    );
+  }
+
+  /// Translates the API's JobType enum wire values (e.g. "FullTime") into
+  /// the display strings the UI's filter chips already compare against
+  /// (e.g. "Full-time") — see Assignment 2.1 Q1 for why this mapping lives
+  /// here rather than in the DTO.
+  static String _mapEmploymentType(String apiType) {
+    switch (apiType) {
+      case 'FullTime':
+        return 'Full-time';
+      case 'PartTime':
+        return 'Part-time';
+      case 'Contract':
+        return 'Contract';
+      case 'Internship':
+        return 'Internship';
+      default:
+        return apiType;
+    }
   }
 }

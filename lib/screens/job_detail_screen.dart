@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/job.dart';
-import '../providers/job_providers.dart';
+import '../providers/jobs_notifier.dart';
 
 class JobDetailScreen extends ConsumerWidget {
   final String jobId;
@@ -14,7 +14,7 @@ class JobDetailScreen extends ConsumerWidget {
     // be reached by a direct URL (deep link, notification tap, or typing
     // /jobs/3) with no guarantee the current filter/search/sort state
     // includes this job — the raw list is the only one guaranteed to.
-    final jobsAsync = ref.watch(jobsProvider);
+    final jobsAsync = ref.watch(jobsNotifierProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Job Details')),
@@ -24,14 +24,11 @@ class JobDetailScreen extends ConsumerWidget {
           child: Text(err.toString().replaceFirst('Exception: ', '')),
         ),
         data: (jobs) {
-          final id = int.tryParse(jobId);
           Job? job;
-          if (id != null) {
-            for (final j in jobs) {
-              if (j.id == id) {
-                job = j;
-                break;
-              }
+          for (final j in jobs) {
+            if (j.id == jobId) {
+              job = j;
+              break;
             }
           }
 
@@ -54,6 +51,7 @@ class JobDetailScreen extends ConsumerWidget {
     );
   }
 }
+
 
 class _JobDetailBody extends StatelessWidget {
   final Job job;

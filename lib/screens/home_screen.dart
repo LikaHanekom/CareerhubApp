@@ -4,6 +4,7 @@ import '../models/job.dart';
 import '../widgets/job_card.dart';
 import '../providers/job_providers.dart';
 import 'package:go_router/go_router.dart';
+import '../providers/jobs_notifier.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -145,24 +146,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final visibleJobsAsync = ref.watch(visibleJobsProvider);
     final selectedFilter = ref.watch(selectedFilterProvider);
     final sortOrder = ref.watch(sortOrderProvider);
-    final shouldFail = ref.watch(shouldFailProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('CareerHub'),
         actions: [
-          // Stretch B: toggles the simulated failure and forces a reload.
           IconButton(
-            tooltip: shouldFail
-                ? 'Failure mode ON — tap to turn off'
-                : 'Simulate a failed load',
-            icon: Icon(
-              shouldFail ? Icons.bug_report : Icons.bug_report_outlined,
-            ),
-            onPressed: () {
-              ref.read(shouldFailProvider.notifier).state = !shouldFail;
-              ref.invalidate(jobsProvider);
-            },
+            tooltip: 'Refresh jobs',
+            icon: const Icon(Icons.refresh),
+            onPressed: () => ref.read(jobsNotifierProvider.notifier).refresh(),
           ),
         ],
       ),
@@ -188,7 +180,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     const SizedBox(height: 12),
                     ElevatedButton(
-                      onPressed: () => ref.invalidate(jobsProvider),
+                      onPressed: () => ref.invalidate(jobsNotifierProvider),
                       child: const Text('Retry'),
                     ),
                   ],
