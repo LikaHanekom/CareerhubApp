@@ -414,6 +414,7 @@ Since initialLocation is /jobs, the app does land on the jobs list by default �
 ![Tab-State](assets/screenshot-tab-state.png)
 
 ## Assignment 2.1
+- 14 July 2026
 
 ### Question 1 — Why a DTO, not a `fromJson` on the `Job` model
 
@@ -493,15 +494,18 @@ So the test does **not** throw an unhandled exception — it fails as an ordinar
 2. Whether `JobDto.fromJson` / `Job.fromDto` correctly parse real API JSON, including edge cases like null salaries or unexpected enum values — that's the job of a focused **unit test** on the DTO/mapping layer, not a widget test.
 
 ### LogInterceptor Output
-![LogInterceptor showing request and 200 response](docs/screenshots/log-interceptor.png)
+![LogInterceptor showing request and 200 response](assets/log-interceptor.png)
 
 ### Live Jobs List
-![Jobs list populated from real API](docs/screenshots/live-jobs.png)
+![Jobs list populated from real API](assets/live-jobs.png)
 
 ### Error State
-![Error state after stopping the API](docs/screenshots/error-state.png)
+![Error state after stopping the API](assets/error-state.png)
 
 ### Filter Preserved on Back Navigation
-![Filter selected](docs/screenshots/filter-1-selected.png)
-![Detail screen opened](docs/screenshots/filter-2-detail.png)
-![Back navigation, filter still selected](docs/screenshots/filter-3-preserved.png)
+![Filter selected](assets/filter-1-selected.png)
+![Detail screen opened](assets/filter-2-detail.png)
+![Back navigation, filter still selected](assets/filter-3-preserved.png)
+
+### Flutter test pass:
+![Flutter-Test](assets/flutter-test-Ass2.1.png)
