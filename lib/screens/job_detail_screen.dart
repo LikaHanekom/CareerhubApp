@@ -14,7 +14,7 @@ class JobDetailScreen extends ConsumerWidget {
     // be reached by a direct URL (deep link, notification tap, or typing
     // /jobs/3) with no guarantee the current filter/search/sort state
     // includes this job — the raw list is the only one guaranteed to.
-    final jobsAsync = ref.watch(jobsNotifierProvider);
+    final jobsAsync = ref.watch(jobsProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Job Details')),

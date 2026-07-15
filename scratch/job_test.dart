@@ -1,8 +1,8 @@
-import '../lib/models/job.dart';
+import 'package:careerhub/models/job.dart';
 
 void main() {
   final job1 = Job(
-    id: 1,
+    id: '1',
     title: 'Flutter Developer',
     company: 'CareerHub',
     location: 'Pretoria',
@@ -14,7 +14,7 @@ void main() {
   );
 
   final job2 = Job(
-    id: 2,
+    id: '2',
     title: 'Backend Intern',
     company: 'DataCo',
     location: 'Johannesburg',
@@ -23,7 +23,7 @@ void main() {
   );
 
   final job3 = Job.closed(
-    id: 3,
+    id: '3',
     title: 'Product Designer',
     company: 'PixelWorks',
     location: 'Cape Town',
@@ -31,7 +31,7 @@ void main() {
   );
 
   final job4 = Job.remote(
-    id: 4,
+    id: '4',
     title: 'DevOps Engineer',
     company: 'CloudNine',
     employmentType: 'Contract',

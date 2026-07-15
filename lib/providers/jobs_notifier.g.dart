@@ -6,21 +6,49 @@ part of 'jobs_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+
+@ProviderFor(JobsNotifier)
+final jobsProvider = JobsNotifierProvider._();
+
+final class JobsNotifierProvider
+    extends $AsyncNotifierProvider<JobsNotifier, List<Job>> {
+  JobsNotifierProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'jobsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$jobsNotifierHash();
+
+  @$internal
+  @override
+  JobsNotifier create() => JobsNotifier();
+}
+
 String _$jobsNotifierHash() => r'2a51f76f3de38cefa76037e9200712440f3ae9fc';
 
-/// See also [JobsNotifier].
-@ProviderFor(JobsNotifier)
-final jobsNotifierProvider =
-    AutoDisposeAsyncNotifierProvider<JobsNotifier, List<Job>>.internal(
-      JobsNotifier.new,
-      name: r'jobsNotifierProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$jobsNotifierHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
-
-typedef _$JobsNotifier = AutoDisposeAsyncNotifier<List<Job>>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+abstract class _$JobsNotifier extends $AsyncNotifier<List<Job>> {
+  FutureOr<List<Job>> build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<List<Job>>, List<Job>>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<List<Job>>, List<Job>>,
+              AsyncValue<List<Job>>,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}

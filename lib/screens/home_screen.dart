@@ -154,7 +154,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           IconButton(
             tooltip: 'Refresh jobs',
             icon: const Icon(Icons.refresh),
-            onPressed: () => ref.read(jobsNotifierProvider.notifier).refresh(),
+            onPressed: () => ref.read(jobsProvider.notifier).refresh(),
           ),
         ],
       ),
@@ -180,7 +180,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     const SizedBox(height: 12),
                     ElevatedButton(
-                      onPressed: () => ref.invalidate(jobsNotifierProvider),
+                      onPressed: () => ref.invalidate(jobsProvider),
                       child: const Text('Retry'),
                     ),
                   ],

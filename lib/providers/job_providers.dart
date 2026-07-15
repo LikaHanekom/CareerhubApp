@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/job.dart';
 import 'jobs_notifier.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 /// Selected filter chip label.
 final selectedFilterProvider = StateProvider<String>((ref) => 'All');
@@ -15,7 +16,7 @@ final searchQueryProvider = StateProvider<String>((ref) => '');
 
 /// Filtered list — derived from the live jobs + filter only.
 final filteredJobsProvider = Provider<AsyncValue<List<Job>>>((ref) {
-  final jobsAsync = ref.watch(jobsNotifierProvider);
+  final jobsAsync = ref.watch(jobsProvider);
   final selectedFilter = ref.watch(selectedFilterProvider);
 
   return jobsAsync.whenData((jobs) {

@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'job_dto.dart';
 import '../models/job.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 part 'jobs_repository.g.dart';
 
@@ -39,12 +38,19 @@ class JobsRepository {
   JobsRepository(this._dio);
 
   Future<List<Job>> getJobs() async {
-    final response = await _dio.get('jobs');
-    final body = response.data as Map<String, dynamic>;
+    final response = await _dio.get('jobs');// makes HTTP GET request to endpoint
+    final body = response.data as Map<String, dynamic>;//response body comes back
+    final (:jobs, :totalCount) = _parseJobsResponse(body);
+    return jobs;
+  }
+  //private helper
+  ({List<Job> jobs, int totalCount}) _parseJobsResponse(Map<String, dynamic> body) {
     final data = body['data'] as List;
-    return data
+    final jobs = data
         .map((json) => JobDto.fromJson(json as Map<String, dynamic>))
         .map(Job.fromDto)
         .toList();
+    final totalCount = body['totalCount'] as int;
+    return (jobs: jobs, totalCount: totalCount);
   }
 }
