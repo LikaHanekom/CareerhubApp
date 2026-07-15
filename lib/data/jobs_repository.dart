@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'job_dto.dart';
 import '../models/job.dart';
+import 'api_result.dart';
 
 part 'jobs_repository.g.dart';
 
@@ -37,11 +38,17 @@ class JobsRepository {
 
   JobsRepository(this._dio);
 
-  Future<List<Job>> getJobs() async {
-    final response = await _dio.get('jobs');// makes HTTP GET request to endpoint
-    final body = response.data as Map<String, dynamic>;//response body comes back
-    final (:jobs, :totalCount) = _parseJobsResponse(body);
-    return jobs;
+  Future<ApiResult<List<Job>>> getJobs() async {
+    try {
+      final response = await _dio.get('jobs');
+      final body = response.data as Map<String, dynamic>;
+      final (:jobs, :totalCount) = _parseJobsResponse(body);
+      return Success(jobs);
+    } on DioException catch (e) {
+      return Failure(_messageForDioException(e), statusCode: e.response?.statusCode);
+    } catch (e) {
+      return Failure('Something went wrong. Please try again.');
+    }
   }
   //private helper
   ({List<Job> jobs, int totalCount}) _parseJobsResponse(Map<String, dynamic> body) {
@@ -52,5 +59,16 @@ class JobsRepository {
         .toList();
     final totalCount = body['totalCount'] as int;
     return (jobs: jobs, totalCount: totalCount);
+  }
+
+  String _messageForDioException(DioException e) {
+    return switch (e.type) {
+      DioExceptionType.connectionTimeout ||
+      DioExceptionType.sendTimeout ||
+      DioExceptionType.receiveTimeout => 'The server took too long to respond. Please try again.',
+      DioExceptionType.connectionError => 'No internet connection. Please check your network.',
+      DioExceptionType.badResponse => 'The server returned an error (${e.response?.statusCode}).',
+      _ => 'Something went wrong while fetching jobs.',
+    };
   }
 }
