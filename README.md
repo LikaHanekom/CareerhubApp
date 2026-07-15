@@ -606,3 +606,49 @@ only surface as a runtime else-less failure — not a compile error.
 Without the `<T>` on `Failure`, it could only be `Failure` (raw), which wouldn't type-check against `ApiResult<List<Job>>` 
 — Dart's generics require the subtype relationship to line up structurally, even for a class that has no actual use for the 
 type argument internally.
+
+## Part 9
+The widget test overrides jobsNotifierProvider with a fake notifier, so the widget tree never reaches the 
+real JobsNotifier or JobsRepository — Dio, DioException handling, and the ApiResult switch are all bypassed 
+entirely during the test run. Riverpod only cares that build() returns a Future<List<Job>>, regardless of what
+happens inside it. The fake satisfies that contract by returning a hardcoded list directly, while the real notifier
+now satisfies it by pattern-matching an ApiResult internally — but since the return type never changed, the test 
+remains unaffected.
+
+## Stretch A
+The == test proves two specific instances compare equal. The Set test proves something stronger: that Freezed's hashCode
+is consistent with == across every instance, which is what Set (a hash-based collection) relies on internally to detect 
+duplicates. Before the Freezed conversion, this same Set test would have produced a set of length 5, not 1 — because Dart's 
+default identity-based hashCode gives every instance a different hash, so Set would treat all five as distinct even though 
+their fields were identical.
+
+## Stretch B
+@Default(false) differs from a plain default in the constructor because it also tells the generated fromJson what 
+value to use if the JSON is missing that key entirely — a bare Dart default only applies when the argument is omitted
+in code, not when parsing untrusted JSON. When a Job is assembled via fromDto, isSaved isn't listed as a named argument
+at all, so Freezed silently uses the @Default(false) value — it always starts unsaved because "saved" is a UI-only 
+concept the API has no way to communicate.
+
+## Stretch C
+The notifier's switch expression grows from two arms to four, since ApiResult now has four concrete subclasses instead
+of two. If you add a new variant (e.g. ValidationFailure) and forget to add its arm to the switch, the compiler reports
+an exhaustiveness error and refuses to build — it won't let you ship code that silently drops a case. With the single 
+Failure approach, the compiler could only guarantee that some failure happened, not what kind — so the notifier
+(and UI) had no compile-time way to distinguish "no internet" from "server error" without inspecting a string message
+at runtime, which is fragile and easy to get wrong.
+
+## build_runner Output
+
+![build_runner success](assets/build_runner_success.png)
+
+## Generated `fromJson` (job_dto.g.dart)
+
+![Generated fromJson](assets/generated_fromjson.png)
+
+## Error State (API Stopped)
+
+![Error state with readable message](assets/error_state.png)
+
+## flutter test Passing
+
+![flutter test passing](assets/flutter_test_passing.png)

@@ -12,8 +12,10 @@ class JobsNotifier extends _$JobsNotifier {
     final repository = ref.read(jobsRepositoryProvider);
     final result = await repository.getJobs();
     return switch (result) {
-      Success(:final data) => data,//pattern that matches onlt when reult is success
-      Failure(:final message) => throw Exception(message),
+      Success(:final data) => data,
+      NetworkFailure(:final message) => throw Exception(message),
+      ServerFailure(:final message) => throw Exception(message),
+      UnknownFailure(:final message) => throw Exception(message),
     };
   }
 

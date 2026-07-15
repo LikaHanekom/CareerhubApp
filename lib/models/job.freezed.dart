@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Job {
 
- String get id; String get title; String get company; String get location; double? get salary; String get employmentType; bool get isOpen; DateTime? get closingDate; String? get description;
+ String get id; String get title; String get company; String get location; double? get salary; String get employmentType; bool get isOpen; DateTime? get closingDate; String? get description; bool get isSaved;
 /// Create a copy of Job
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $JobCopyWith<Job> get copyWith => _$JobCopyWithImpl<Job>(this as Job, _$identity
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Job&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.company, company) || other.company == company)&&(identical(other.location, location) || other.location == location)&&(identical(other.salary, salary) || other.salary == salary)&&(identical(other.employmentType, employmentType) || other.employmentType == employmentType)&&(identical(other.isOpen, isOpen) || other.isOpen == isOpen)&&(identical(other.closingDate, closingDate) || other.closingDate == closingDate)&&(identical(other.description, description) || other.description == description));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Job&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.company, company) || other.company == company)&&(identical(other.location, location) || other.location == location)&&(identical(other.salary, salary) || other.salary == salary)&&(identical(other.employmentType, employmentType) || other.employmentType == employmentType)&&(identical(other.isOpen, isOpen) || other.isOpen == isOpen)&&(identical(other.closingDate, closingDate) || other.closingDate == closingDate)&&(identical(other.description, description) || other.description == description)&&(identical(other.isSaved, isSaved) || other.isSaved == isSaved));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,title,company,location,salary,employmentType,isOpen,closingDate,description);
+int get hashCode => Object.hash(runtimeType,id,title,company,location,salary,employmentType,isOpen,closingDate,description,isSaved);
 
 @override
 String toString() {
-  return 'Job(id: $id, title: $title, company: $company, location: $location, salary: $salary, employmentType: $employmentType, isOpen: $isOpen, closingDate: $closingDate, description: $description)';
+  return 'Job(id: $id, title: $title, company: $company, location: $location, salary: $salary, employmentType: $employmentType, isOpen: $isOpen, closingDate: $closingDate, description: $description, isSaved: $isSaved)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $JobCopyWith<$Res>  {
   factory $JobCopyWith(Job value, $Res Function(Job) _then) = _$JobCopyWithImpl;
 @useResult
 $Res call({
- String id, String title, String company, String location, double? salary, String employmentType, bool isOpen, DateTime? closingDate, String? description
+ String id, String title, String company, String location, double? salary, String employmentType, bool isOpen, DateTime? closingDate, String? description, bool isSaved
 });
 
 
@@ -62,7 +62,7 @@ class _$JobCopyWithImpl<$Res>
 
 /// Create a copy of Job
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? company = null,Object? location = null,Object? salary = freezed,Object? employmentType = null,Object? isOpen = null,Object? closingDate = freezed,Object? description = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? company = null,Object? location = null,Object? salary = freezed,Object? employmentType = null,Object? isOpen = null,Object? closingDate = freezed,Object? description = freezed,Object? isSaved = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -73,7 +73,8 @@ as double?,employmentType: null == employmentType ? _self.employmentType : emplo
 as String,isOpen: null == isOpen ? _self.isOpen : isOpen // ignore: cast_nullable_to_non_nullable
 as bool,closingDate: freezed == closingDate ? _self.closingDate : closingDate // ignore: cast_nullable_to_non_nullable
 as DateTime?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,isSaved: null == isSaved ? _self.isSaved : isSaved // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -158,10 +159,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  String company,  String location,  double? salary,  String employmentType,  bool isOpen,  DateTime? closingDate,  String? description)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  String company,  String location,  double? salary,  String employmentType,  bool isOpen,  DateTime? closingDate,  String? description,  bool isSaved)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Job() when $default != null:
-return $default(_that.id,_that.title,_that.company,_that.location,_that.salary,_that.employmentType,_that.isOpen,_that.closingDate,_that.description);case _:
+return $default(_that.id,_that.title,_that.company,_that.location,_that.salary,_that.employmentType,_that.isOpen,_that.closingDate,_that.description,_that.isSaved);case _:
   return orElse();
 
 }
@@ -179,10 +180,10 @@ return $default(_that.id,_that.title,_that.company,_that.location,_that.salary,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  String company,  String location,  double? salary,  String employmentType,  bool isOpen,  DateTime? closingDate,  String? description)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  String company,  String location,  double? salary,  String employmentType,  bool isOpen,  DateTime? closingDate,  String? description,  bool isSaved)  $default,) {final _that = this;
 switch (_that) {
 case _Job():
-return $default(_that.id,_that.title,_that.company,_that.location,_that.salary,_that.employmentType,_that.isOpen,_that.closingDate,_that.description);case _:
+return $default(_that.id,_that.title,_that.company,_that.location,_that.salary,_that.employmentType,_that.isOpen,_that.closingDate,_that.description,_that.isSaved);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -199,10 +200,10 @@ return $default(_that.id,_that.title,_that.company,_that.location,_that.salary,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  String company,  String location,  double? salary,  String employmentType,  bool isOpen,  DateTime? closingDate,  String? description)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  String company,  String location,  double? salary,  String employmentType,  bool isOpen,  DateTime? closingDate,  String? description,  bool isSaved)?  $default,) {final _that = this;
 switch (_that) {
 case _Job() when $default != null:
-return $default(_that.id,_that.title,_that.company,_that.location,_that.salary,_that.employmentType,_that.isOpen,_that.closingDate,_that.description);case _:
+return $default(_that.id,_that.title,_that.company,_that.location,_that.salary,_that.employmentType,_that.isOpen,_that.closingDate,_that.description,_that.isSaved);case _:
   return null;
 
 }
@@ -214,7 +215,7 @@ return $default(_that.id,_that.title,_that.company,_that.location,_that.salary,_
 
 
 class _Job extends Job {
-  const _Job({required this.id, required this.title, required this.company, required this.location, this.salary, required this.employmentType, required this.isOpen, this.closingDate, this.description}): super._();
+  const _Job({required this.id, required this.title, required this.company, required this.location, this.salary, required this.employmentType, required this.isOpen, this.closingDate, this.description, this.isSaved = false}): super._();
   
 
 @override final  String id;
@@ -226,6 +227,7 @@ class _Job extends Job {
 @override final  bool isOpen;
 @override final  DateTime? closingDate;
 @override final  String? description;
+@override@JsonKey() final  bool isSaved;
 
 /// Create a copy of Job
 /// with the given fields replaced by the non-null parameter values.
@@ -237,16 +239,16 @@ _$JobCopyWith<_Job> get copyWith => __$JobCopyWithImpl<_Job>(this, _$identity);
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Job&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.company, company) || other.company == company)&&(identical(other.location, location) || other.location == location)&&(identical(other.salary, salary) || other.salary == salary)&&(identical(other.employmentType, employmentType) || other.employmentType == employmentType)&&(identical(other.isOpen, isOpen) || other.isOpen == isOpen)&&(identical(other.closingDate, closingDate) || other.closingDate == closingDate)&&(identical(other.description, description) || other.description == description));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Job&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.company, company) || other.company == company)&&(identical(other.location, location) || other.location == location)&&(identical(other.salary, salary) || other.salary == salary)&&(identical(other.employmentType, employmentType) || other.employmentType == employmentType)&&(identical(other.isOpen, isOpen) || other.isOpen == isOpen)&&(identical(other.closingDate, closingDate) || other.closingDate == closingDate)&&(identical(other.description, description) || other.description == description)&&(identical(other.isSaved, isSaved) || other.isSaved == isSaved));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,title,company,location,salary,employmentType,isOpen,closingDate,description);
+int get hashCode => Object.hash(runtimeType,id,title,company,location,salary,employmentType,isOpen,closingDate,description,isSaved);
 
 @override
 String toString() {
-  return 'Job(id: $id, title: $title, company: $company, location: $location, salary: $salary, employmentType: $employmentType, isOpen: $isOpen, closingDate: $closingDate, description: $description)';
+  return 'Job(id: $id, title: $title, company: $company, location: $location, salary: $salary, employmentType: $employmentType, isOpen: $isOpen, closingDate: $closingDate, description: $description, isSaved: $isSaved)';
 }
 
 
@@ -257,7 +259,7 @@ abstract mixin class _$JobCopyWith<$Res> implements $JobCopyWith<$Res> {
   factory _$JobCopyWith(_Job value, $Res Function(_Job) _then) = __$JobCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String title, String company, String location, double? salary, String employmentType, bool isOpen, DateTime? closingDate, String? description
+ String id, String title, String company, String location, double? salary, String employmentType, bool isOpen, DateTime? closingDate, String? description, bool isSaved
 });
 
 
@@ -274,7 +276,7 @@ class __$JobCopyWithImpl<$Res>
 
 /// Create a copy of Job
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? company = null,Object? location = null,Object? salary = freezed,Object? employmentType = null,Object? isOpen = null,Object? closingDate = freezed,Object? description = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? company = null,Object? location = null,Object? salary = freezed,Object? employmentType = null,Object? isOpen = null,Object? closingDate = freezed,Object? description = freezed,Object? isSaved = null,}) {
   return _then(_Job(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -285,7 +287,8 @@ as double?,employmentType: null == employmentType ? _self.employmentType : emplo
 as String,isOpen: null == isOpen ? _self.isOpen : isOpen // ignore: cast_nullable_to_non_nullable
 as bool,closingDate: freezed == closingDate ? _self.closingDate : closingDate // ignore: cast_nullable_to_non_nullable
 as DateTime?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,isSaved: null == isSaved ? _self.isSaved : isSaved // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

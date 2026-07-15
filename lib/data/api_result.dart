@@ -11,10 +11,20 @@ class Success<T> extends ApiResult<T> {
 }
 
 //message and statysCode(optional)
-class Failure<T> extends ApiResult<T> {
+class NetworkFailure<T> extends ApiResult<T> {
   final String message;
-  final int? statusCode; //if failure came from HTTP response
-  const Failure(this.message, {this.statusCode});
+  const NetworkFailure(this.message);
+}
+
+class ServerFailure<T> extends ApiResult<T> {
+  final String message;
+  final int statusCode;
+  const ServerFailure(this.message, this.statusCode);
+}
+
+class UnknownFailure<T> extends ApiResult<T> {
+  final String message;
+  const UnknownFailure(this.message);
 }
 
 // How it works: repository calls the API if it works success gets returned

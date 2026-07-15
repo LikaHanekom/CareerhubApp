@@ -17,6 +17,7 @@ abstract  class Job with _$Job {
     required bool isOpen,
     DateTime? closingDate,
     String? description,
+    @Default(false) bool isSaved,
   }) = _Job;
 
   bool get canApply => isOpen;

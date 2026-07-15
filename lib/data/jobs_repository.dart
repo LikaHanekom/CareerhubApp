@@ -45,11 +45,24 @@ class JobsRepository {
       final (:jobs, :totalCount) = _parseJobsResponse(body);
       return Success(jobs);
     } on DioException catch (e) {
-      return Failure(_messageForDioException(e), statusCode: e.response?.statusCode);
+      return switch (e.type) {
+        DioExceptionType.connectionTimeout ||
+        DioExceptionType.sendTimeout ||
+        DioExceptionType.receiveTimeout ||
+        DioExceptionType.connectionError =>
+            NetworkFailure('No internet connection. Please check your network.'),
+        DioExceptionType.badResponse =>
+            ServerFailure(
+              'The server returned an error.',
+              e.response?.statusCode ?? 0,
+            ),
+        _ => UnknownFailure('Something went wrong while fetching jobs.'),
+      };
     } catch (e) {
-      return Failure('Something went wrong. Please try again.');
+      return UnknownFailure('Something went wrong. Please try again.');
     }
   }
+
   //private helper
   ({List<Job> jobs, int totalCount}) _parseJobsResponse(Map<String, dynamic> body) {
     final data = body['data'] as List;
@@ -59,16 +72,5 @@ class JobsRepository {
         .toList();
     final totalCount = body['totalCount'] as int;
     return (jobs: jobs, totalCount: totalCount);
-  }
-
-  String _messageForDioException(DioException e) {
-    return switch (e.type) {
-      DioExceptionType.connectionTimeout ||
-      DioExceptionType.sendTimeout ||
-      DioExceptionType.receiveTimeout => 'The server took too long to respond. Please try again.',
-      DioExceptionType.connectionError => 'No internet connection. Please check your network.',
-      DioExceptionType.badResponse => 'The server returned an error (${e.response?.statusCode}).',
-      _ => 'Something went wrong while fetching jobs.',
-    };
   }
 }

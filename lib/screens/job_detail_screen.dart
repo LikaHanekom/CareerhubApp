@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/job.dart';
 import '../providers/jobs_notifier.dart';
-
+import '../providers/saved_job_provider.dart';
 class JobDetailScreen extends ConsumerWidget {
   final String jobId;
 
@@ -53,39 +53,58 @@ class JobDetailScreen extends ConsumerWidget {
 }
 
 
-class _JobDetailBody extends StatelessWidget {
+class _JobDetailBody extends ConsumerWidget {
   final Job job;
   const _JobDetailBody({required this.job});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final override = ref.watch(savedJobOverrideProvider(job.id));
+    final displayedJob = override ?? job;
+
     final textTheme = Theme.of(context).textTheme;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text(job.title, style: textTheme.headlineSmall),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(displayedJob.title, style: textTheme.headlineSmall),
+            ),
+            IconButton(
+              icon: Icon(
+                displayedJob.isSaved ? Icons.bookmark : Icons.bookmark_border,
+              ),
+              onPressed: () {
+                ref.read(savedJobOverrideProvider(job.id).notifier).state =
+                    displayedJob.copyWith(isSaved: !displayedJob.isSaved);
+              },
+            ),
+          ],
+        ),
         const SizedBox(height: 4),
-        Text(job.company, style: textTheme.titleMedium),
+        Text(displayedJob.company, style: textTheme.titleMedium),
         const SizedBox(height: 12),
-        _DetailRow(label: 'Location', value: job.location),
-        _DetailRow(label: 'Employment type', value: job.employmentType),
-        _DetailRow(label: 'Salary', value: job.displaySalary),
-        _DetailRow(label: 'Status', value: job.isOpen ? 'Open' : 'Closed'),
-        if (job.closingDate != null)
+        _DetailRow(label: 'Location', value: displayedJob.location),
+        _DetailRow(label: 'Employment type', value: displayedJob.employmentType),
+        _DetailRow(label: 'Salary', value: displayedJob.displaySalary),
+        _DetailRow(label: 'Status', value: displayedJob.isOpen ? 'Open' : 'Closed'),
+        if (displayedJob.closingDate != null)
           _DetailRow(
             label: 'Closing date',
-            value: job.closingDate!.toLocal().toString().split(' ').first,
+            value: displayedJob.closingDate!.toLocal().toString().split(' ').first,
           ),
-        if (job.description != null) ...[
+        if (displayedJob.description != null) ...[
           const SizedBox(height: 16),
           Text('Description', style: textTheme.titleSmall),
           const SizedBox(height: 4),
-          Text(job.description!),
+          Text(displayedJob.description!),
         ],
         const SizedBox(height: 24),
         FilledButton(
-          onPressed: job.canApply ? () {} : null,
-          child: Text(job.canApply ? 'Apply now' : 'Applications closed'),
+          onPressed: displayedJob.canApply ? () {} : null,
+          child: Text(displayedJob.canApply ? 'Apply now' : 'Applications closed'),
         ),
       ],
     );
