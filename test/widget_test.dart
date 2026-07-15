@@ -82,7 +82,7 @@ Future<void> pumpCareerHubApp(WidgetTester tester) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        jobsNotifierProvider.overrideWith(() => _FakeJobsNotifier()),
+        jobsProvider.overrideWith(() => _FakeJobsNotifier()),
       ],
       child: const CareerHubApp(),
     ),

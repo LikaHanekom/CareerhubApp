@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'job_dto.dart';
 import '../models/job.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'api_result.dart';
 
 part 'jobs_repository.g.dart';
 
@@ -38,13 +38,39 @@ class JobsRepository {
 
   JobsRepository(this._dio);
 
-  Future<List<Job>> getJobs() async {
-    final response = await _dio.get('jobs');
-    final body = response.data as Map<String, dynamic>;
+  Future<ApiResult<List<Job>>> getJobs() async {
+    try {
+      final response = await _dio.get('jobs');
+      final body = response.data as Map<String, dynamic>;
+      final (:jobs, :totalCount) = _parseJobsResponse(body);
+      return Success(jobs);
+    } on DioException catch (e) {
+      return switch (e.type) {
+        DioExceptionType.connectionTimeout ||
+        DioExceptionType.sendTimeout ||
+        DioExceptionType.receiveTimeout ||
+        DioExceptionType.connectionError =>
+            NetworkFailure('No internet connection. Please check your network.'),
+        DioExceptionType.badResponse =>
+            ServerFailure(
+              'The server returned an error.',
+              e.response?.statusCode ?? 0,
+            ),
+        _ => UnknownFailure('Something went wrong while fetching jobs.'),
+      };
+    } catch (e) {
+      return UnknownFailure('Something went wrong. Please try again.');
+    }
+  }
+
+  //private helper
+  ({List<Job> jobs, int totalCount}) _parseJobsResponse(Map<String, dynamic> body) {
     final data = body['data'] as List;
-    return data
+    final jobs = data
         .map((json) => JobDto.fromJson(json as Map<String, dynamic>))
         .map(Job.fromDto)
         .toList();
+    final totalCount = body['totalCount'] as int;
+    return (jobs: jobs, totalCount: totalCount);
   }
 }

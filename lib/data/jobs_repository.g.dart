@@ -6,39 +6,86 @@ part of 'jobs_repository.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$dioHash() => r'400853981ed20563ed60f4f42cbe9ecfa38cda07';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// See also [dio].
 @ProviderFor(dio)
-final dioProvider = AutoDisposeProvider<Dio>.internal(
-  dio,
-  name: r'dioProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$dioHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final dioProvider = DioProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef DioRef = AutoDisposeProviderRef<Dio>;
-String _$jobsRepositoryHash() => r'697d55ff7c33af66151c331a0ad73f030a41944e';
+final class DioProvider extends $FunctionalProvider<Dio, Dio, Dio>
+    with $Provider<Dio> {
+  DioProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'dioProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
 
-/// See also [jobsRepository].
+  @override
+  String debugGetCreateSourceHash() => _$dioHash();
+
+  @$internal
+  @override
+  $ProviderElement<Dio> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  Dio create(Ref ref) {
+    return dio(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Dio value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Dio>(value),
+    );
+  }
+}
+
+String _$dioHash() => r'4ea702ad0e3666d3be639fd938745247503bda2d';
+
 @ProviderFor(jobsRepository)
-final jobsRepositoryProvider = AutoDisposeProvider<JobsRepository>.internal(
-  jobsRepository,
-  name: r'jobsRepositoryProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$jobsRepositoryHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final jobsRepositoryProvider = JobsRepositoryProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef JobsRepositoryRef = AutoDisposeProviderRef<JobsRepository>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class JobsRepositoryProvider
+    extends $FunctionalProvider<JobsRepository, JobsRepository, JobsRepository>
+    with $Provider<JobsRepository> {
+  JobsRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'jobsRepositoryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$jobsRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<JobsRepository> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  JobsRepository create(Ref ref) {
+    return jobsRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(JobsRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<JobsRepository>(value),
+    );
+  }
+}
+
+String _$jobsRepositoryHash() => r'697d55ff7c33af66151c331a0ad73f030a41944e';

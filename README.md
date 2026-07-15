@@ -509,3 +509,146 @@ So the test does **not** throw an unhandled exception — it fails as an ordinar
 
 ### Flutter test pass:
 ![Flutter-Test](assets/flutter-test-Ass2.1.png)
+
+
+# Assignment 2.2
+## Q1: The equality problem
+Dart's default `==` compares by identity (memory address), not by field values. Concretely: your notifier calls `repository.getJobs()` on both 
+initial load and pull-to-refresh. Even if the API returns byte-for-byte identical job data both times, each call builds a 
+brand-new `List<Job>` with brand-new `Job` instances at new memory addresses. Under identity equality, Riverpod's `updateShouldNotify` 
+check (which relies on `==`) is forced to conclude the new list is never equal to the old one — because two structurally-identical-but-separately-constructed
+objects are never `==` under identity comparison, regardless of their field values. This means every `AsyncValue` update looks like "real" new data to Riverpod,
+even when nothing actually changed.
+
+**Concrete widget consequence:** In `HomeScreen`, `visibleJobsProvider`/`filteredJobsProvider` rebuild the widget tree
+whenever the upstream `jobsNotifierProvider` "changes" — which, under identity equality, is every single refresh, even a no-op one.
+`ListView.builder`/`GridView.builder` and each `JobCard` will unnecessarily rebuild on every refresh, discarding and reconstructing 
+widgets that are visually and semantically identical to what was already on screen. A performance problem, not 
+a correctness bug, but it also defeats `AnimatedList`-style techniques or subtle transition animations that rely on Flutter correctly 
+recognizing "this is the same item as before."
+
+**After Freezed:** Freezed generates `==`/`hashCode` that compares every field, recursively, using each field's own `==`. Field-by-field:
+
+| Field | Freezed == correct? | Note |
+| :--- | :--- | :--- |
+| id (String) | Yes | String has value equality built in |
+| title, company, location, employmentType (String) | Yes | |
+| salary (double?) | Yes | double has value equality |
+| isOpen (bool) | Yes | |
+| closingDate (DateTime?) | Yes | DateTime implements value-based `==` |
+| description (String?) | Yes | |
+
+
+
+## Q2: Which model gets json_serializable
+`JobDto` is responsible for reading raw JSON — it's the one with `fromJson`. 
+Attaching `json_serializable` to `Job` (the domain model) would be a problem specifically because
+`Job`'s field names and the API's JSON keys don't match everywhere — e.g. `Job.employmentType` 
+doesn't correspond to a JSON key at all (the API sends `type`, and the value needs translation,
+"FullTime" → "Full-time", not just a key rename); `json_serializable` maps JSON keys to Dart fields structurally,
+it has no way to run your `_mapEmploymentType` translation logic during deserialization. `Job.fromDto` exists precisely
+because that logic can't live inside a generated `fromJson`.
+
+**What the generator reads:** the const factory constructor's parameter list 
+— specifically each parameter's name and declared type. For `DateTime postedAt`, the generator emits 
+`DateTime.parse(json['postedAt'] as String)` because it recognizes the `DateTime` type and knows the JSON 
+representation is an ISO string. For a field where the Dart name and API key differ, you'd annotate the parameter 
+with `@JsonKey(name: 'apiFieldName')`. In your specific `JobDto`, none of the fields actually differ from the API's JSON 
+keys (you named them to match when you wrote it in 2.1) — so no `@JsonKey` annotations are needed here, but it's worth 
+explaining the mechanism in your README anyway since Q2 asks for it generically.
+
+**fromDto's continued role:** it's the only place that resolves `salaryMin`/`salaryMax` into a 
+single `salary`, and translates `type` string values. If the API renames a JSON field tomorrow, only
+`job_dto.dart` changes (one `@JsonKey` or one property rename) — `fromDto`, `Job`, and every screen/provider
+are untouched, because none of them read raw JSON. If `fromDto` didn't exist and `Job` read JSON directly, every
+file touching `Job.fromJson` — and, worse, every place doing ad-hoc translation of the `salary`/`type` fields — would need
+to change, and that translation logic would likely be duplicated wherever it's needed.
+
+## Q3: The private constructor
+`const Job._()` is a private, unnamed, no-op constructor. 
+Freezed requires it because of how the generated code is structured: 
+Freezed produces a mixin `_$Job` containing `==`, `hashCode`, `copyWith`,
+and `toString`, and your `Job` class does `class Job with _$Job`. 
+A mixin can only be applied to a class that has a constructor compatible with it 
+— but more importantly, Freezed itself needs somewhere to attach any custom getters/methods(like `canApply`, `displaySalary`, `matches`) 
+without those custom members getting swallowed by the generated `_Job` implementation class. 
+Declaring `const Job._()` opens the door for the class body to contain hand-written members 
+alongside the generated ones. Without it, attempting to add an instance method or getter to a `@freezed` 
+class produces a compile error — Freezed's tooling flags it, because the class has no legal place for hand-written
+code to live relative to the generated implementation.
+
+**The fromDto change:** as a factory `Job.fromDto(...)`, Freezed would interpret it as declaring a second named union variant of 
+the sealed `Job` type — i.e., "a Job can be either the default shape or a fromDto shape," which is wrong; 
+`fromDto` isn't a different shape of job, it's just a different way of constructing the one shape. 
+The fix: convert it from `factory Job.fromDto(...)` to `static Job fromDto(...)`. The call site (`Job.fromDto(dto)`) 
+stays syntactically identical — Dart's call syntax for a named constructor and for a static method are indistinguishable 
+at the call site (`ClassName.memberName(args)` either way), so nothing in `jobs_repository.dart` needs to change.
+
+
+## Q4: Sealed classes and exhaustiveness
+`sealed` enforces that every direct subclass of `ApiResult<T>` must be declared in the same file 
+(or the same library, if split across part files) as the sealed class itself. This is the mechanism 
+that makes exhaustiveness checking possible: because the compiler can see the complete, closed set of 
+subclasses at compile time (no subclass can be added from outside that file), it can prove — at compile time
+— whether a switch expression on an `ApiResult<T>` covers every possible case.
+
+**Exhaustiveness checking:** when you write `switch (result) { Success(...) => ..., Failure(...) => ... }`,
+the compiler cross-checks your arms against the sealed type's known subclass list. If you omit the `Failure`
+arm, the code does not compile — you get a compile-time error stating the switch isn't exhaustive, not a runtime 
+crash from an unhandled case. This is fundamentally different from an abstract class `ApiResult<T>`: an abstract 
+class places no restriction on where subclasses can be defined — anyone, anywhere, in any file, can `extends ApiResult<T>`.
+The compiler therefore cannot know the complete set of subtypes and cannot prove a switch is exhaustive; a missing arm would
+only surface as a runtime else-less failure — not a compile error.
+
+**Why Failure<T> needs the type parameter even though it never stores a T:** because `Failure<T>` must satisfy
+`extends ApiResult<T>` — and `ApiResult<T>` is generic. For `ApiResult<List<Job>>` to be able to hold either a `Success<List<Job>>` or a `Failure<List<Job>>`, 
+`Failure` must itself be parameterized by `T` so that `Failure<List<Job>>` is a valid subtype of `ApiResult<List<Job>>`. 
+Without the `<T>` on `Failure`, it could only be `Failure` (raw), which wouldn't type-check against `ApiResult<List<Job>>` 
+— Dart's generics require the subtype relationship to line up structurally, even for a class that has no actual use for the 
+type argument internally.
+
+## Part 9
+The widget test overrides jobsNotifierProvider with a fake notifier, so the widget tree never reaches the 
+real JobsNotifier or JobsRepository — Dio, DioException handling, and the ApiResult switch are all bypassed 
+entirely during the test run. Riverpod only cares that build() returns a Future<List<Job>>, regardless of what
+happens inside it. The fake satisfies that contract by returning a hardcoded list directly, while the real notifier
+now satisfies it by pattern-matching an ApiResult internally — but since the return type never changed, the test 
+remains unaffected.
+
+## Stretch A
+The == test proves two specific instances compare equal. The Set test proves something stronger: that Freezed's hashCode
+is consistent with == across every instance, which is what Set (a hash-based collection) relies on internally to detect 
+duplicates. Before the Freezed conversion, this same Set test would have produced a set of length 5, not 1 — because Dart's 
+default identity-based hashCode gives every instance a different hash, so Set would treat all five as distinct even though 
+their fields were identical.
+
+## Stretch B
+@Default(false) differs from a plain default in the constructor because it also tells the generated fromJson what 
+value to use if the JSON is missing that key entirely — a bare Dart default only applies when the argument is omitted
+in code, not when parsing untrusted JSON. When a Job is assembled via fromDto, isSaved isn't listed as a named argument
+at all, so Freezed silently uses the @Default(false) value — it always starts unsaved because "saved" is a UI-only 
+concept the API has no way to communicate.
+
+## Stretch C
+The notifier's switch expression grows from two arms to four, since ApiResult now has four concrete subclasses instead
+of two. If you add a new variant (e.g. ValidationFailure) and forget to add its arm to the switch, the compiler reports
+an exhaustiveness error and refuses to build — it won't let you ship code that silently drops a case. With the single 
+Failure approach, the compiler could only guarantee that some failure happened, not what kind — so the notifier
+(and UI) had no compile-time way to distinguish "no internet" from "server error" without inspecting a string message
+at runtime, which is fragile and easy to get wrong.
+
+## build_runner Output
+
+![build_runner success](assets/build_runner_success.png)
+
+## Generated `fromJson` (job_dto.g.dart)
+
+![Generated fromJson](assets/generated_fromjson.png)
+
+## Error State (API Stopped)
+
+![Error state with readable message](assets/error_state.png)
+
+## flutter test Passing
+
+![flutter test passing](assets/flutter_test_passing.png)
