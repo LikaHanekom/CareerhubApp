@@ -1,9 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:isar/isar.dart';
-import 'package:careerhub/data/api_result.dart';
-import 'package:careerhub/models/job_application.dart';
-import 'package:careerhub/models/job_application_dto.dart';
-import 'package:careerhub/models/job_application_isar.dart';
+import 'api_result.dart';
+import '../models/job_application.dart';
+import '../models/job_application_dto.dart';
+import '../models/job_application_isar.dart';
 
 class ApplicationsRepository {
   final Dio _dio;

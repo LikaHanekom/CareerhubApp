@@ -4,7 +4,10 @@ import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'features/applications/data/models/job_application_isar.dart';
+
 import 'router/app_router.dart';
+import 'data/job_application_isar.dart';
+
 
 // Placeholder providers that require runtime overrides
 final isarProvider = Provider<Isar>((ref) {
@@ -16,22 +19,22 @@ final sharedPrefsProvider = Provider<SharedPreferences>((ref) {
 });
 
 void main() async {
-  // 1. Ensure engine bindings are ready for native plugins
+  // Ensure engine bindings are ready for native plugins
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 2. Fetch local document directory for Isar storage
+  // Fetch local document directory for Isar storage
   final dir = await getApplicationDocumentsDirectory();
 
-  // 3. Open Isar with the job applications collection schema
+  //  Open Isar with the job applications collection schema
   final isar = await Isar.open(
-    [JobApplicationIsarSchema],
-    directory: dir.path,
-  );
+      [JobApplicationIsarSchema],
+      directory: dir.path,
+    );
 
-  // 4. Initialize shared preferences for filter state
+  //  Initialize shared preferences for filter state
   final sharedPrefs = await SharedPreferences.getInstance();
 
-  // 5. Run the app with runtime overrides injected into ProviderScope
+  // Run the app with runtime overrides injected into ProviderScope
   runApp(
     ProviderScope(
       overrides: [

@@ -1,7 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:careerhub/models/job_application.dart';
-import 'package:careerhub/providers/applications_notifier.dart';
-import 'package:careerhub/providers/applications_filter_notifier.dart';
+import '../models/job_application.dart';
+import 'applications_notifier.dart';
+import 'applications_filter_notifier.dart';
 
 part 'filtered_applications_provider.g.dart';
 
