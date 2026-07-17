@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../models/application_status.dart';
 import '../main.dart';
@@ -16,9 +17,8 @@ class ApplicationsFilterNotifier extends _$ApplicationsFilterNotifier {
     if (savedFilterName == null) return null; // Default to All
 
     // Safe matching from persisted string back to application status enum values
-    return ApplicationStatus.values.firstWhere(
-      (status) => status.name == savedFilterName,
-      orElse: () => null,
+    return ApplicationStatus.values.firstWhereOrNull(
+          (status) => status.name == savedFilterName,
     );
   }
 
@@ -35,3 +35,4 @@ class ApplicationsFilterNotifier extends _$ApplicationsFilterNotifier {
     state = newStatus;
   }
 }
+

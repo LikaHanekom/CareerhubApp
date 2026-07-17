@@ -1,4 +1,4 @@
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 import '../models/application_status.dart';
 import '../models/job_application.dart';
 
@@ -24,7 +24,7 @@ class JobApplicationIsar {
       company: company,
       dateApplied: dateApplied,
       status: ApplicationStatus.values.firstWhere(
-        (e) => e.name.toLowerCase() == status.toLowerCase(),
+            (e) => e.name.toLowerCase() == status.toLowerCase(),
         orElse: () => ApplicationStatus.pending,
       ),
     );
@@ -40,4 +40,5 @@ class JobApplicationIsar {
       ..status = domain.status.name;
   }
 }
+
 

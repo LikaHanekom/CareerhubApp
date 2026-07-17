@@ -1,10 +1,11 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import '../data/job_application_dto.dart';
 import 'application_status.dart';
 
 part 'job_application.freezed.dart';
 
 @freezed
-class JobApplication with _$JobApplication {
+abstract class JobApplication with _$JobApplication {
   const factory JobApplication({
     required String id,
     required String jobTitle,
@@ -20,7 +21,7 @@ class JobApplication with _$JobApplication {
       company: dto.company,
       dateApplied: DateTime.parse(dto.dateApplied),
       status: ApplicationStatus.values.firstWhere(
-        (e) => e.name.toLowerCase() == dto.status.toLowerCase(),
+            (e) => e.name.toLowerCase() == dto.status.toLowerCase(),
         orElse: () => ApplicationStatus.pending,
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../data/api_result.dart';
+import '../data/application_repository.dart';
 import '../models/job_application.dart';
-
 
 part 'applications_notifier.g.dart';
 
@@ -21,20 +22,16 @@ class ApplicationsNotifier extends _$ApplicationsNotifier {
     // Initiate the live network call in the background
     final result = await repository.fetchAndCacheApplications();
 
-    return result.when(
-      success: (freshApplications) {
-        // Return live data on success
-        return freshApplications;
-      },
-      failure: (message, statusCode) {
-        // Fallback on network failure: if cache has items, show them, don't crash
-        if (cachedData.isNotEmpty) {
-          return cachedData;
-        }
-        // If cache is completely dry and network fails, throw the error down to the UI
-        throw Exception(message);
-      },
-    );
+    return switch (result) {
+      Success(:final data) => data,
+    // Fallback on any network failure: if cache has items, show them
+    // instead of throwing. If the cache is dry, surface the error to
+    // the UI.
+      NetworkFailure(:final message) ||
+      ServerFailure(:final message) ||
+      UnknownFailure(:final message) =>
+      cachedData.isNotEmpty ? cachedData : throw Exception(message),
+    };
   }
 
   /// Call this from the UI to manually refresh data
@@ -44,3 +41,4 @@ class ApplicationsNotifier extends _$ApplicationsNotifier {
     await future;
   }
 }
+

@@ -34,14 +34,14 @@ final class ApplicationsNotifierProvider
 }
 
 String _$applicationsNotifierHash() =>
-    r'9b6957b137ade8ac406ff0d3adaddc48cb621f9a';
+    r'b575fb29bd5d35a043bac87d57bdde4f5cf9de58';
 
 abstract class _$ApplicationsNotifier
     extends $AsyncNotifier<List<JobApplication>> {
   FutureOr<List<JobApplication>> build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref =
         this.ref
             as $Ref<AsyncValue<List<JobApplication>>, List<JobApplication>>;
@@ -56,6 +56,6 @@ abstract class _$ApplicationsNotifier
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

@@ -57,4 +57,4 @@ final class FilteredApplicationsProvider
 }
 
 String _$filteredApplicationsHash() =>
-    r'b34e012bd54ec603e13196f548f332e81dea19f6';
+    r'41458d9e5acba06d9f4b69829e8e0183bf225eb3';
