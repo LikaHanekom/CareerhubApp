@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'features/applications/data/models/job_application_isar.dart';
-
 import 'router/app_router.dart';
 import 'data/job_application_isar.dart';
 
@@ -27,9 +25,9 @@ void main() async {
 
   //  Open Isar with the job applications collection schema
   final isar = await Isar.open(
-      [JobApplicationIsarSchema],
-      directory: dir.path,
-    );
+    [JobApplicationIsarSchema],
+    directory: dir.path,
+  );
 
   //  Initialize shared preferences for filter state
   final sharedPrefs = await SharedPreferences.getInstance();

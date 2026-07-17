@@ -42,14 +42,14 @@ final class ApplicationsFilterNotifierProvider
 }
 
 String _$applicationsFilterNotifierHash() =>
-    r'37f192760226df15eedac4a0ac8adff9a3bde656';
+    r'76f45d2d36ea98b2883349f7ef3cb352d9132c9b';
 
 abstract class _$ApplicationsFilterNotifier
     extends $Notifier<ApplicationStatus?> {
   ApplicationStatus? build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<ApplicationStatus?, ApplicationStatus?>;
     final element =
         ref.element
@@ -59,6 +59,6 @@ abstract class _$ApplicationsFilterNotifier
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

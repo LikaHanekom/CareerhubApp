@@ -6,8 +6,6 @@ import '../screens/saved_screen.dart';
 import '../widgets/scaffold_with_nav_bar.dart';
 import '../screens/applications_screen.dart';
 
-part 'app_router.g.dart';
-
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/jobs',
@@ -43,8 +41,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
           StatefulShellBranch(
-               routes: [
-                GoRoute(
+            routes: [
+              GoRoute(
                 path: '/applications',
                 builder: (context, state) => const ApplicationsScreen(),
               ),

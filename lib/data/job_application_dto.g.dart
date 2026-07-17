@@ -10,8 +10,8 @@ _JobApplicationDto _$JobApplicationDtoFromJson(Map<String, dynamic> json) =>
     _JobApplicationDto(
       id: json['id'] as String,
       jobTitle: json['jobTitle'] as String,
-      company: json['company'] as String,
-      dateApplied: json['dateApplied'] as String,
+      company: json['company'] as String? ?? '',
+      dateApplied: json['submittedAt'] as String,
       status: json['status'] as String,
     );
 
@@ -20,6 +20,6 @@ Map<String, dynamic> _$JobApplicationDtoToJson(_JobApplicationDto instance) =>
       'id': instance.id,
       'jobTitle': instance.jobTitle,
       'company': instance.company,
-      'dateApplied': instance.dateApplied,
+      'submittedAt': instance.dateApplied,
       'status': instance.status,
     };

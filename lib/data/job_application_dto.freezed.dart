@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$JobApplicationDto {
 
- String get id; String get jobTitle; String get company; String get dateApplied; String get status;
+ String get id; String get jobTitle; String get company;@JsonKey(name: 'submittedAt') String get dateApplied; String get status;
 /// Create a copy of JobApplicationDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $JobApplicationDtoCopyWith<$Res>  {
   factory $JobApplicationDtoCopyWith(JobApplicationDto value, $Res Function(JobApplicationDto) _then) = _$JobApplicationDtoCopyWithImpl;
 @useResult
 $Res call({
- String id, String jobTitle, String company, String dateApplied, String status
+ String id, String jobTitle, String company,@JsonKey(name: 'submittedAt') String dateApplied, String status
 });
 
 
@@ -157,7 +157,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String jobTitle,  String company,  String dateApplied,  String status)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String jobTitle,  String company, @JsonKey(name: 'submittedAt')  String dateApplied,  String status)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _JobApplicationDto() when $default != null:
 return $default(_that.id,_that.jobTitle,_that.company,_that.dateApplied,_that.status);case _:
@@ -178,7 +178,7 @@ return $default(_that.id,_that.jobTitle,_that.company,_that.dateApplied,_that.st
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String jobTitle,  String company,  String dateApplied,  String status)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String jobTitle,  String company, @JsonKey(name: 'submittedAt')  String dateApplied,  String status)  $default,) {final _that = this;
 switch (_that) {
 case _JobApplicationDto():
 return $default(_that.id,_that.jobTitle,_that.company,_that.dateApplied,_that.status);case _:
@@ -198,7 +198,7 @@ return $default(_that.id,_that.jobTitle,_that.company,_that.dateApplied,_that.st
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String jobTitle,  String company,  String dateApplied,  String status)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String jobTitle,  String company, @JsonKey(name: 'submittedAt')  String dateApplied,  String status)?  $default,) {final _that = this;
 switch (_that) {
 case _JobApplicationDto() when $default != null:
 return $default(_that.id,_that.jobTitle,_that.company,_that.dateApplied,_that.status);case _:
@@ -213,13 +213,13 @@ return $default(_that.id,_that.jobTitle,_that.company,_that.dateApplied,_that.st
 @JsonSerializable()
 
 class _JobApplicationDto implements JobApplicationDto {
-  const _JobApplicationDto({required this.id, required this.jobTitle, required this.company, required this.dateApplied, required this.status});
+  const _JobApplicationDto({required this.id, required this.jobTitle, this.company = '', @JsonKey(name: 'submittedAt') required this.dateApplied, required this.status});
   factory _JobApplicationDto.fromJson(Map<String, dynamic> json) => _$JobApplicationDtoFromJson(json);
 
 @override final  String id;
 @override final  String jobTitle;
-@override final  String company;
-@override final  String dateApplied;
+@override@JsonKey() final  String company;
+@override@JsonKey(name: 'submittedAt') final  String dateApplied;
 @override final  String status;
 
 /// Create a copy of JobApplicationDto
@@ -255,7 +255,7 @@ abstract mixin class _$JobApplicationDtoCopyWith<$Res> implements $JobApplicatio
   factory _$JobApplicationDtoCopyWith(_JobApplicationDto value, $Res Function(_JobApplicationDto) _then) = __$JobApplicationDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String jobTitle, String company, String dateApplied, String status
+ String id, String jobTitle, String company,@JsonKey(name: 'submittedAt') String dateApplied, String status
 });
 
 
