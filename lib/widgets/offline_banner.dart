@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 /// connectivity is restored. Requires no user interaction to show or hide.
 class OfflineBanner extends StatelessWidget {
   final bool isVisible;
+  final String message;
 
   const OfflineBanner({
     required this.isVisible,
+    this.message = "You're offline — showing cached data",
     super.key,
   });
 

@@ -2,10 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/job.dart';
 import 'jobs_notifier.dart';
 import 'saved_jobs_notifier.dart';
+import 'filter_notifier.dart';
 import 'package:flutter_riverpod/legacy.dart';
-
-/// Selected filter chip label.
-final selectedFilterProvider = StateProvider<String>((ref) => 'All');
 
 /// Stretch A — sort order, as its own independent piece of state.
 enum SortOrder { aToZ, zToA }
@@ -18,7 +16,7 @@ final searchQueryProvider = StateProvider<String>((ref) => '');
 /// Filtered list — derived from the live jobs + filter only.
 final filteredJobsProvider = Provider<AsyncValue<List<Job>>>((ref) {
   final jobsAsync = ref.watch(jobsProvider);
-  final selectedFilter = ref.watch(selectedFilterProvider);
+  final selectedFilter = ref.watch(filterProvider);
 
   return jobsAsync.whenData((jobs) {
     if (selectedFilter == 'All') return jobs;

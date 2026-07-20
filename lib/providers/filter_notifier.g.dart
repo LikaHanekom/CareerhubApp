@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'saved_jobs_notifier.dart';
+part of 'filter_notifier.dart';
 
 // **************************************************************************
 // RiverpodGenerator
@@ -9,51 +9,51 @@ part of 'saved_jobs_notifier.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
-@ProviderFor(SavedJobsNotifier)
-final savedJobsProvider = SavedJobsNotifierProvider._();
+@ProviderFor(FilterNotifier)
+final filterProvider = FilterNotifierProvider._();
 
-final class SavedJobsNotifierProvider
-    extends $NotifierProvider<SavedJobsNotifier, Set<String>> {
-  SavedJobsNotifierProvider._()
+final class FilterNotifierProvider
+    extends $NotifierProvider<FilterNotifier, String> {
+  FilterNotifierProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'savedJobsProvider',
+        name: r'filterProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$savedJobsNotifierHash();
+  String debugGetCreateSourceHash() => _$filterNotifierHash();
 
   @$internal
   @override
-  SavedJobsNotifier create() => SavedJobsNotifier();
+  FilterNotifier create() => FilterNotifier();
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(Set<String> value) {
+  Override overrideWithValue(String value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<Set<String>>(value),
+      providerOverride: $SyncValueProvider<String>(value),
     );
   }
 }
 
-String _$savedJobsNotifierHash() => r'fd1a01989f94605dad5edfe655e2b402f625f533';
+String _$filterNotifierHash() => r'02714a4c4ac04c7a671a11ace5234ed3cd79f10a';
 
-abstract class _$SavedJobsNotifier extends $Notifier<Set<String>> {
-  Set<String> build();
+abstract class _$FilterNotifier extends $Notifier<String> {
+  String build();
   @$mustCallSuper
   @override
   void runBuild() {
-    final ref = this.ref as $Ref<Set<String>, Set<String>>;
+    final ref = this.ref as $Ref<String, String>;
     final element =
         ref.element
             as $ClassProviderElement<
-              AnyNotifier<Set<String>, Set<String>>,
-              Set<String>,
+              AnyNotifier<String, String>,
+              String,
               Object?,
               Object?
             >;
