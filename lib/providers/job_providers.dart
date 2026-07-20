@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/job.dart';
 import 'jobs_notifier.dart';
+import 'saved_jobs_notifier.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 /// Selected filter chip label.
@@ -51,5 +52,18 @@ final visibleJobsProvider = Provider<AsyncValue<List<Job>>>((ref) {
         ? a.title.compareTo(b.title)
         : b.title.compareTo(a.title));
     return sorted;
+  });
+});
+
+/// Jobs the user has bookmarked — derived from the raw job list + the
+/// persisted set of saved job IDs. Deliberately built off [jobsProvider]
+/// (not [visibleJobsProvider]), since a saved job should still show up here
+/// even if it wouldn't currently match the home screen's filter/search/sort.
+final savedJobsListProvider = Provider<AsyncValue<List<Job>>>((ref) {
+  final jobsAsync = ref.watch(jobsProvider);
+  final savedIds = ref.watch(savedJobsProvider);
+
+  return jobsAsync.whenData((jobs) {
+    return jobs.where((job) => savedIds.contains(job.id)).toList();
   });
 });
