@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../models/application_status.dart';
 import '../main.dart';
+import '../core/prefs_provider.dart';
 part 'applications_filter_notifier.g.dart';
 
 
@@ -11,7 +12,7 @@ class ApplicationsFilterNotifier extends _$ApplicationsFilterNotifier {
 
   @override
   ApplicationStatus? build() {
-    final prefs = ref.watch(sharedPrefsProvider);
+    final prefs = ref.watch(prefsProvider);
     final savedFilterName = prefs.getString(_storageKey);
 
     if (savedFilterName == null) return null; // Default to All
@@ -24,7 +25,7 @@ class ApplicationsFilterNotifier extends _$ApplicationsFilterNotifier {
 
   /// Updates the application status filter slice and updates SharedPreferences synchronously
   void setFilter(ApplicationStatus? newStatus) {
-    final prefs = ref.read(sharedPrefsProvider);
+    final prefs = ref.read(prefsProvider);
 
     if (newStatus == null) {
       prefs.remove(_storageKey);
