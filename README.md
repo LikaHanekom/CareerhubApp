@@ -745,3 +745,5 @@ show yet. I think this is an acceptable trade-off rather than a bug for this ass
 the cache-then-network flow), and the banner corrects itself the moment either a real connectivity-change event fires or the network call itself fails
 and the cache is served. Fixing it properly would mean also checking Connectivity().checkConnectivity() once eagerly at startup, which is outside what
 this assignment's isOfflineProvider was asked to do.
+
+![Offline banner showing cached data with no network](assets/Offline-loading.png)
