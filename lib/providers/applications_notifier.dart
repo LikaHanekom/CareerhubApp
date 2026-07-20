@@ -2,6 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/api_result.dart';
 import '../data/application_repository.dart';
 import '../models/job_application.dart';
+import '../models/job.dart';
 
 part 'applications_notifier.g.dart';
 
@@ -39,6 +40,43 @@ class ApplicationsNotifier extends _$ApplicationsNotifier {
     state = const AsyncLoading();
     ref.invalidateSelf();
     await future;
+  }
+
+  /// Submits an application, then refetches the full list on success so
+  /// the new row shows up using the exact same GET → mapper pipeline as
+  /// everything else — no guessing at the POST response shape.
+  Future<void> apply({
+    required Job job,
+    required String fullName,
+    required String email,
+    String? phone,
+    required int yearsOfExperience,
+    required String coverLetter,
+    String? linkedInUrl,
+    required bool availableImmediately,
+    required int noticePeriodWeeks,
+  }) async {
+    final repository = ref.read(applicationsRepositoryProvider);
+    final result = await repository.applyToJob(
+      job: job,
+      fullName: fullName,
+      email: email,
+      phone: phone,
+      yearsOfExperience: yearsOfExperience,
+      coverLetter: coverLetter,
+      linkedInUrl: linkedInUrl,
+      availableImmediately: availableImmediately,
+      noticePeriodWeeks: noticePeriodWeeks,
+    );
+
+    switch (result) {
+      case Success():
+        await refresh();
+      case NetworkFailure(:final message) ||
+      ServerFailure(:final message) ||
+      UnknownFailure(:final message):
+        throw Exception(message);
+    }
   }
 }
 

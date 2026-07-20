@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:isar_community/isar.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../main.dart';
+import '../models/job.dart';
 import '../models/job_application.dart';
 import 'api_result.dart';
 import 'dio_provider.dart';
@@ -43,7 +44,7 @@ class ApplicationsRepository {
       // Replace with your actual CareerHub API route endpoint
       final response = await _dio.get(
         '/applications',
-        queryParameters: {'applicantId': 'a1111111-1111-1111-1111-111111111111'}, // placeholder until auth exists
+        queryParameters: {'applicantId': 'b2222222-2222-2222-2222-222222222222'}, // placeholder until auth exists
       );
 
       if (response.statusCode == 200 && response.data is List) {
@@ -89,5 +90,100 @@ class ApplicationsRepository {
     } catch (e) {
       return UnknownFailure('An unexpected error occurred: $e');
     }
+  }
+
+  Future<ApiResult<void>> applyToJob({
+    required Job job,
+    required String fullName,
+    required String email,
+    String? phone,
+    required int yearsOfExperience,
+    required String coverLetter,
+    String? linkedInUrl,
+    required bool availableImmediately,
+    required int noticePeriodWeeks,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/applications/apply',
+        data: {
+          'jobListingId': job.id,
+          // Same placeholder used in fetchAndCacheApplications — swap
+          // both out together once real auth exists.
+          'applicantId': 'a1111111-1111-1111-1111-111111111111',
+          'fullName': fullName,
+          'email': email,
+          'phone': phone,
+          'yearsOfExperience': yearsOfExperience,
+          'coverLetter': coverLetter,
+          'linkedInUrl': linkedInUrl,
+          'availableImmediately': availableImmediately,
+          'noticePeriodWeeks': noticePeriodWeeks,
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return const Success(null);
+      }
+      return ServerFailure('Failed to submit application', response.statusCode ?? 0);
+    } on DioException catch (e) {
+      final statusCode = e.response?.statusCode;
+      final serverMessage = _extractErrorMessage(e.response?.data);
+
+      // Map your controller's specific exceptions to readable messages.
+      if (statusCode == 400) {
+        return ServerFailure(
+          serverMessage ?? 'This listing is no longer accepting applications.',
+          400,
+        );
+      }
+      if (statusCode == 409) {
+        return ServerFailure(
+          serverMessage ?? 'You have already applied for this job.',
+          409,
+        );
+      }
+      if (statusCode == 429) {
+        return const ServerFailure(
+          'Too many attempts. Please wait a moment and try again.',
+          429,
+        );
+      }
+
+      return switch (e.type) {
+        DioExceptionType.connectionTimeout ||
+        DioExceptionType.sendTimeout ||
+        DioExceptionType.receiveTimeout ||
+        DioExceptionType.connectionError =>
+            NetworkFailure('No internet connection. Please check your network.'),
+        DioExceptionType.badResponse => ServerFailure(
+          serverMessage ?? 'The server returned an error.',
+          statusCode ?? 0,
+        ),
+        _ => UnknownFailure(serverMessage ?? 'Something went wrong while applying.'),
+      };
+    } catch (e) {
+      return UnknownFailure('An unexpected error occurred: $e');
+    }
+  }
+
+  /// Best-effort extraction of a human-readable message from an error
+  /// response body — your controller sometimes returns a plain string
+  /// (BadRequest(ex.Message)) and sometimes an ASP.NET ModelState
+  /// validation dictionary (the automatic 400 from [ApiController]).
+  String? _extractErrorMessage(dynamic data) {
+    if (data is String) return data;
+    if (data is Map) {
+      if (data['title'] is String) return data['title'] as String;
+      final errors = data['errors'];
+      if (errors is Map) {
+        for (final value in errors.values) {
+          if (value is List && value.isNotEmpty) {
+            return value.first.toString();
+          }
+        }
+      }
+    }
+    return null;
   }
 }

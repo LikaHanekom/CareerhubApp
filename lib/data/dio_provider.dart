@@ -9,7 +9,7 @@ Dio dio(Ref ref) {
   final dio = Dio(
     BaseOptions(
 
-      baseUrl: 'http://10.0.2.2:5011/api/v1/',
+      baseUrl: 'http://localhost:5011/api/v1/',
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       headers: {
