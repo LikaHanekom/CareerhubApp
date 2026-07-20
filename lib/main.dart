@@ -4,28 +4,27 @@ import 'package:isar_community/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'router/app_router.dart';
+import 'core/isar_provider.dart';
+import 'core/prefs_provider.dart';
 import 'data/job_application_isar.dart';
-
-
-// Placeholder providers that require runtime overrides
-final isarProvider = Provider<Isar>((ref) {
-  throw UnimplementedError('Isar has not been overridden');
-});
-
-final sharedPrefsProvider = Provider<SharedPreferences>((ref) {
-  throw UnimplementedError('SharedPreferences has not been overridden');
-});
+import 'data/job_cache.dart';
 
 void main() async {
-  // Ensure engine bindings are ready for native plugins
+  // Ensure engine bindings are ready for native plugins. This must be the
+  // first statement: it creates the BinaryMessenger that Flutter's platform
+  // channels use to talk to native code, and every plugin call below
+  // (path_provider, shared_preferences, Isar's native bindings) goes through
+  // it. Calling getApplicationDocumentsDirectory() before this line throws
+  // a FlutterError: "Binding has not yet been initialized."
   WidgetsFlutterBinding.ensureInitialized();
 
   // Fetch local document directory for Isar storage
   final dir = await getApplicationDocumentsDirectory();
 
-  //  Open Isar with the job applications collection schema
+  //  Open Isar with both collection schemas: existing application cache
+  //  plus the new job cache added in this assignment.
   final isar = await Isar.open(
-    [JobApplicationIsarSchema],
+    [JobApplicationIsarSchema, JobCacheSchema],
     directory: dir.path,
   );
 
@@ -37,7 +36,7 @@ void main() async {
     ProviderScope(
       overrides: [
         isarProvider.overrideWithValue(isar),
-        sharedPrefsProvider.overrideWithValue(sharedPrefs),
+        prefsProvider.overrideWithValue(sharedPrefs),
       ],
       child: const CareerHubApp(),
     ),
@@ -69,3 +68,4 @@ class CareerHubApp extends ConsumerWidget {
     );
   }
 }
+

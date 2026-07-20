@@ -1,7 +1,10 @@
 import 'package:dio/dio.dart';
+import 'package:isar_community/isar.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'job_dto.dart';
+import 'job_cache.dart';
 import '../models/job.dart';
+import '../core/isar_provider.dart';
 import 'api_result.dart';
 
 part 'jobs_repository.g.dart';
@@ -10,7 +13,7 @@ part 'jobs_repository.g.dart';
 Dio dio(Ref ref) {
   const baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:5011/api/v1/',
+    defaultValue: 'http://10.0.2.2:5011/api/v1/',
   );
 
   final dio = Dio(
@@ -30,19 +33,36 @@ Dio dio(Ref ref) {
 
 @riverpod
 JobsRepository jobsRepository(Ref ref) {
-  return JobsRepository(ref.watch(dioProvider));
+  return JobsRepository(
+    dio: ref.watch(dioProvider),
+    isar: ref.watch(isarProvider),
+  );
 }
 
 class JobsRepository {
   final Dio _dio;
+  final Isar _isar;
 
-  JobsRepository(this._dio);
+  const JobsRepository({required Dio dio, required Isar isar})
+      : _dio = dio,
+        _isar = isar;
+
+  Future<List<Job>> getCachedJobs() async {
+    final cached = await _isar.jobCaches.where().findAll();
+    return cached.map(_toDomain).toList();
+  }
 
   Future<ApiResult<List<Job>>> getJobs() async {
     try {
       final response = await _dio.get('jobs');
       final body = response.data as Map<String, dynamic>;
       final (:jobs, :totalCount) = _parseJobsResponse(body);
+
+      await _isar.writeTxn(() async {
+        await _isar.jobCaches.clear();
+        await _isar.jobCaches.putAll(jobs.map(_toCache).toList());
+      });
+
       return Success(jobs);
     } on DioException catch (e) {
       return switch (e.type) {
@@ -63,7 +83,6 @@ class JobsRepository {
     }
   }
 
-  //private helper
   ({List<Job> jobs, int totalCount}) _parseJobsResponse(Map<String, dynamic> body) {
     final data = body['data'] as List;
     final jobs = data
@@ -73,4 +92,8 @@ class JobsRepository {
     final totalCount = body['totalCount'] as int;
     return (jobs: jobs, totalCount: totalCount);
   }
+
+  Job _toDomain(JobCache cache) => cache.toDomain();
+
+  JobCache _toCache(Job job) => JobCache.fromDomain(job);
 }

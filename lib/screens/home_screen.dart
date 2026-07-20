@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/job.dart';
 import '../widgets/job_card.dart';
+import '../widgets/offline_banner.dart';
 import '../providers/job_providers.dart';
+import '../providers/filter_notifier.dart';
+import '../providers/connectivity_provider.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/jobs_notifier.dart';
 
@@ -71,7 +74,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 label: Text(label),
                 selected: selectedFilter == label,
                 onSelected: (_) {
-                  ref.read(selectedFilterProvider.notifier).state = label;
+                  ref.read(filterProvider.notifier).select(label);
                 },
               ),
             );
@@ -139,13 +142,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // HomeScreen watches exactly ONE data provider (visibleJobsProvider) and
-    // three small "which option is selected" providers used only to drive
-    // chip/toggle highlighting. It has no idea filtering, searching, and
-    // sorting are three separate steps under the hood.
+    // HomeScreen watches exactly ONE data provider (visibleJobsProvider),
+    // a few small "which option is selected" providers used only to drive
+    // chip/toggle highlighting, and isOfflineProvider for the banner. It
+    // has no idea filtering, searching, and sorting are three separate
+    // steps under the hood.
     final visibleJobsAsync = ref.watch(visibleJobsProvider);
-    final selectedFilter = ref.watch(selectedFilterProvider);
+    final selectedFilter = ref.watch(filterProvider);
     final sortOrder = ref.watch(sortOrderProvider);
+    final isOffline = ref.watch(isOfflineProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -160,6 +165,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       body: Column(
         children: [
+          OfflineBanner(
+            isVisible: isOffline,
+            message: "You're offline — showing cached jobs",
+          ),
           _buildSearchField(),
           const SizedBox(height: 8),
           _buildFilterChips(selectedFilter),

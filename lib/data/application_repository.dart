@@ -7,6 +7,7 @@ import 'api_result.dart';
 import 'dio_provider.dart';
 import 'job_application_dto.dart';
 import 'job_application_isar.dart';
+import '../core/isar_provider.dart';
 
 part 'application_repository.g.dart';
 

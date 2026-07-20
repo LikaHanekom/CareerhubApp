@@ -652,3 +652,98 @@ at runtime, which is fragile and easy to get wrong.
 ## flutter test Passing
 
 ![flutter test passing](assets/flutter_test_passing.png)
+
+# Assignment 2.1
+## Question 1 — The two persistence mechanisms and why they are not interchangeable
+
+Why the jobs list can't live in SharedPreferences. SharedPreferences only stores String, bool, int, double, and List<String>. 
+A List<Job> isn't any of those, so I'd have to serialise it myself: on every write I'd call jsonEncode() on the whole list 
+(which means each Job needs a toJson()), producing one giant String to hand to prefs.setString(). On every read I'd have to reverse
+that — prefs.getString() then jsonDecode() then map each raw map back into a Job. The real problem is that jsonDecode() on a large 
+string runs synchronously on the main isolate. If the user navigates to the jobs screen while that decode is running, the UI thread 
+is busy parsing JSON and can't process frame callbacks, gestures, or animations — the app just freezes for however long the parse takes. 
+Isar avoids this because reads happen through its native storage engine, not through synchronous JSON parsing on the isolate that's also 
+driving the UI.
+
+Why Isar needs a dedicated schema class. Isar is schema-first: I can't just hand it an arbitrary List<Job>. 
+The @collection annotation plus isar_generator inspect my class at build time and generate the binary schema Isar's native layer
+actually understands — field offsets, index definitions, and the type-safe query API (isar.jobCaches.where()...). A plain Dart class
+gives Isar none of that; there's nothing for the generator to read metadata off of without the annotation, and no native binding gets produced for it.
+
+Why this needs a third class instead of reusing JobDto or Job. @freezed generates an immutable class: a const unnamed constructor and 
+final fields with no public setters. Isar's generator needs the opposite — a class it can instantiate with a plain constructor and then
+populate field by field using late (settable) fields as it reads a row back from disk. Those two constraints can't both be true of the same
+class, so neither JobDto nor Job — both @freezed — can also carry @collection. That's why JobCache exists as its own class in lib/data/job_cache.dart,
+with a toDomain() / fromDomain() pair to convert in and out of it.
+
+## Question 2 — Isar's type limitations and conversion strategy
+
+On the enum question, as it applies to my actual model: my Job domain model doesn't carry a Dart enum directly — employmentType is already 
+a plain String ('Full-time', 'Part-time', etc.), mapped once from the raw API value inside Job.fromDto() via _mapEmploymentType(). 
+So JobCache.employmentType just stores that String as-is; there's no enum round-trip needed for Job itself.
+
+The enum-to-Isar pattern the assignment is asking about is already used elsewhere in this codebase, on JobApplicationIsar for the ApplicationStatus
+enum (pending, reviewed, accepted, rejected), and it's the strategy I'd apply if Job ever grows an enum field: store enumValue.name as a String 
+on write, and on read reconstruct with ApplicationStatus.values.firstWhere((e) => e.name == stored, orElse: () => ApplicationStatus.pending).
+The fallback matters because the stored string came from a previous app version or a partially-written row — if the enum's cases ever change 
+(a value gets renamed or removed) and I let firstWhere throw instead of falling back, one stale cached row would crash the entire cache read 
+on cold boot, which is exactly the situation this feature is supposed to protect against. Falling back to a safe default degrades gracefully instead.
+
+On DateTime vs. epoch milliseconds: my schema stores closingDate as DateTime? directly, which Isar 3.x supports natively 
+— I don't hand-roll the conversion at all. If I'd instead stored closingDate.millisecondsSinceEpoch as an int, I'd have to remember to call 
+.toUtc() before converting to epoch and DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true).toLocal() on the way back, every single time, on 
+every field. The concrete failure case: a closing date near midnight, stored as epoch off a device in one timezone, then read back after the device's 
+timezone changes (travel, or just DST) — the manual epoch math can silently roll the date to the wrong day if the UTC/local conversion is applied 
+inconsistently between the write and the read. Isar's native DateTime field handles that serialisation internally and consistently, so I don't have
+two separate hand-written conversion paths that can drift out of sync with each other.
+
+## Question 3 — Initialization order and the provider override pattern
+
+WidgetsFlutterBinding.ensureInitialized() creates the WidgetsBinding singleton, which in turn sets up the BinaryMessenger that Flutter's platform 
+channels use to talk to native Android/iOS code. Every plugin call I make afterward — path_provider, shared_preferences, Isar's native bindings — 
+goes through that messenger. It has to be the first statement in main() because nothing else can reach native code without it: calling 
+getApplicationDocumentsDirectory() before this line throws a FlutterError: "Binding has not yet been initialized."
+
+Both isarProvider and prefsProvider throw UnimplementedError if read without an override, rather than returning null or a default instance.
+A throw fails loudly and immediately at the exact point something tried to read the provider too early — that's far easier to debug than a 
+null/default silently letting the app run in a broken state (e.g. writing jobs to a fake, in-memory-only Isar instance that's quietly discarded).
+The override takes effect when the ProviderScope's ProviderContainer is constructed, which happens before the root widget's build() methods ever run.
+So when a provider's build() calls ref.watch(isarProvider) or ref.watch(prefsProvider) synchronously, the override is already wired in — it reads the 
+real instance, not the throwing placeholder.
+
+A lazy FutureProvider<Isar> that calls Isar.open() on first read would technically work, but has two concrete downsides compared to eager 
+initialization in main():
+
+Every provider that depends on Isar becomes async even when its own logic doesn't need to be, forcing AsyncValue handling and an extra loading
+flicker through parts of the app that should already have a ready database by the time the first frame renders.
+It's a runtime failure mode, not a compile-time one: if Isar.open() throws (locked file, corrupted database, disk full), that error only surfaces
+the first time some provider happens to read it — which could be deep in a screen the user navigates to minutes into the session — instead of failing
+cleanly and immediately at startup where it's obvious what broke.
+
+## Question 4 — The cache-then-network contract with Riverpod's state machine
+
+The three state transitions in JobsNotifier.build():
+
+Before build() runs at all: state is the provider's initial AsyncLoading(). The jobs screen shows a CircularProgressIndicator.
+state = AsyncData(cachedJobs) (only when the cache read returned a non-empty list): state moves from AsyncLoading() to AsyncData(cachedJobs). 
+This line itself triggers the rebuild — the spinner disappears and the ListView renders the cached jobs, before the network call has even started.
+build() returns, via the closing switch expression: state moves from whatever it was (AsyncData(cachedJobs) or still AsyncLoading() if there was no 
+cache) to the final resolved value — AsyncData(freshJobs) on Success, AsyncData(cachedJobs) again on a Failure with a non-empty cache, or AsyncError
+if it throws on a Failure with an empty cache. This is the rebuild that swaps the list on screen from cached to fresh data (or leaves it as cached 
+data if the network call failed).
+
+If the Failure arm threw instead of returning cachedJobs: filteredJobsProvider derives its value with jobsAsync.whenData(...), which 
+— when the source AsyncValue is an AsyncError — passes that error straight through rather than running the whenData callback. 
+So filteredJobsProvider would expose AsyncError, and the jobs screen's .when() would fall into its error branch and show the error UI, 
+throwing away a perfectly good list of jobs the user was already looking at. Throwing unconditionally would only be the more correct choice
+if there genuinely is no cache to fall back to — which is exactly what the actual code does: it only throws when cachedJobs is also empty.
+
+Offline banner on cold boot: connectivity_plus's stream only emits on a change, not on subscription, so at the moment the jobs screen
+first renders after a cold boot, connectivityStreamProvider is still in its own AsyncLoading() state — no data has arrived yet. isOfflineProvider's 
+.when() returns false for the loading arm, so isOffline is false on that very first frame even if the device is already offline — the banner doesn't 
+show yet. I think this is an acceptable trade-off rather than a bug for this assignment: the user isn't blocked (cached jobs are already showing via 
+the cache-then-network flow), and the banner corrects itself the moment either a real connectivity-change event fires or the network call itself fails
+and the cache is served. Fixing it properly would mean also checking Connectivity().checkConnectivity() once eagerly at startup, which is outside what
+this assignment's isOfflineProvider was asked to do.
+
+![Offline banner showing cached data with no network](assets/Offline-loading.png)

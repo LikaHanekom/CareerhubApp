@@ -18,7 +18,7 @@ class ApplicationsScreen extends ConsumerWidget {
     final activeFilter = ref.watch(applicationsFilterProvider);
 
     // Reactive connectivity monitoring - no polling, no Timer
-    final isOnline = ref.watch(isOnlineProvider);
+    final isOffline = ref.watch(isOfflineProvider);
 
     final isWideScreen = MediaQuery.sizeOf(context).width >= 600;
 
@@ -61,7 +61,7 @@ class ApplicationsScreen extends ConsumerWidget {
       body: Column(
         children: [
           // Automated network banner, zero interaction required
-          OfflineBanner(isVisible: !isOnline),
+          OfflineBanner(isVisible: isOffline),
 
           Expanded(
             child: filteredAppsAsync.when(
