@@ -10,12 +10,24 @@ class JobsNotifier extends _$JobsNotifier {
   @override
   Future<List<Job>> build() async {
     final repository = ref.read(jobsRepositoryProvider);
+
+    // 1. Read whatever's cached first, with zero network latency.
+    final cachedJobs = await repository.getCachedJobs();
+
+    // 2. If there's cached data, push it to the UI immediately.
+    if (cachedJobs.isNotEmpty) {
+      state = AsyncData(cachedJobs);
+    }
+
+    // 3. Attempt the live network call.
     final result = await repository.getJobs();
+
     return switch (result) {
       Success(:final data) => data,
-      NetworkFailure(:final message) => throw Exception(message),
-      ServerFailure(:final message) => throw Exception(message),
-      UnknownFailure(:final message) => throw Exception(message),
+      NetworkFailure(:final message) ||
+      ServerFailure(:final message) ||
+      UnknownFailure(:final message) =>
+      cachedJobs.isNotEmpty ? cachedJobs : throw Exception(message),
     };
   }
 
