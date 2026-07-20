@@ -34,7 +34,7 @@ final class ApplicationsNotifierProvider
 }
 
 String _$applicationsNotifierHash() =>
-    r'b575fb29bd5d35a043bac87d57bdde4f5cf9de58';
+    r'6e7702f77e30b1bb9312e179c230ff5f4137e31b';
 
 abstract class _$ApplicationsNotifier
     extends $AsyncNotifier<List<JobApplication>> {

@@ -47,7 +47,7 @@ final class DioProvider extends $FunctionalProvider<Dio, Dio, Dio>
   }
 }
 
-String _$dioHash() => r'4c70e836eaff784b55995187b042047b59a2f133';
+String _$dioHash() => r'4ea702ad0e3666d3be639fd938745247503bda2d';
 
 @ProviderFor(jobsRepository)
 final jobsRepositoryProvider = JobsRepositoryProvider._();
