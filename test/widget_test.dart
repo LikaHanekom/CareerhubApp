@@ -23,8 +23,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:careerhub/main.dart';
+import 'package:careerhub/core/prefs_provider.dart';
 import 'package:careerhub/models/job.dart';
 import 'package:careerhub/providers/jobs_notifier.dart';
 import 'package:careerhub/widgets/job_card.dart';
@@ -79,10 +81,19 @@ Future<void> pumpCareerHubApp(WidgetTester tester) async {
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
 
+  // Assignment 2.3: HomeScreen now reads filterProvider, whose build()
+  // reads prefsProvider. prefsProvider throws UnimplementedError unless
+  // overridden, so this test needs a real (mocked) SharedPreferences
+  // instance, same as production main.dart wires up — just backed by an
+  // in-memory mock instead of the platform channel.
+  SharedPreferences.setMockInitialValues({});
+  final prefs = await SharedPreferences.getInstance();
+
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         jobsProvider.overrideWith(() => _FakeJobsNotifier()),
+        prefsProvider.overrideWithValue(prefs),
       ],
       child: const CareerHubApp(),
     ),
