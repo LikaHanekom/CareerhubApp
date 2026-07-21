@@ -255,4 +255,15 @@ class AuthRepository {
 
 
   }
+
+  //Stretch A Assignment2.4
+  DateTime? getExpiry(String token) {
+    final payload = _decodePayload(token);
+    if (payload == null) return null;
+
+    final exp = payload['exp'];
+    if (exp is! int) return null;
+
+    return DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+  }
 }

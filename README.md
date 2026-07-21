@@ -977,3 +977,79 @@ PS C:\Users\alika\dev\careerhub> flutter test
 PS C:\Users\alika\dev\careerhub> 
 
 ```
+
+## Stretch Goals
+
+### Stretch A — Token expiry countdown
+
+**Implementation:** `AuthNotifier` now schedules a `Timer` (via
+`_scheduleRefresh()`) whenever a valid `Authenticated` state is reached
+— at cold boot, after login, and after any successful refresh. The
+timer fires 60 seconds before the access token's `exp` claim (read via
+a new `AuthRepository.getExpiry()` method) and calls `tryRefresh()`
+automatically. On success, the new token is stored silently with no
+user-visible change and the next countdown is rescheduled against the
+new expiry. On failure, state transitions to `AsyncData(Unauthenticated())`
+and secure storage is cleared, exactly matching the reactive
+interceptor-on-401 path's behaviour. The timer is cancelled in
+`ref.onDispose()` so a stale timer from a torn-down notifier instance
+can never fire against a new one, and again explicitly in `logout()`.
+
+**Clock skew edge case:** if the device's clock runs more than 60
+seconds ahead of the server's, the countdown is computed against the
+device's own `DateTime.now()`, while the JWT's `exp` claim is an
+absolute, server-issued epoch timestamp. A fast device clock doesn't
+change when the token actually expires server-side, but it does change
+when the *local* timer believes "60 seconds before expiry" has arrived
+— so the timer can fire and refresh well before the token is genuinely
+close to expiring, which is harmless (an early refresh just succeeds).
+The more concerning case is a device clock running *behind* the
+server's: the local timer could fire *after* the token has already
+expired server-side, missing its "silent" window and forcing a visible
+failure. Either way, the interceptor-on-401 approach (Part 7) is
+completely unaffected by client clock drift, since it reacts to the
+server's actual 401 response rather than a local prediction — this is
+why the two approaches are complementary rather than redundant: the
+countdown is a best-effort attempt to refresh before the user ever
+notices, and the interceptor is the authoritative, clock-independent
+fallback that guarantees correctness regardless of how skewed the
+device's clock is.
+
+---
+
+### Stretch B — Biometric re-authentication gate
+
+**Implementation:** Added the `local_auth` package. When
+`AuthNotifier.build()` finds a valid (or freshly refreshed) stored
+token at cold boot, it calls `LocalAuthentication.authenticate()`
+before returning `Authenticated`. If the user cancels the prompt, the
+device has no enrolled biometrics, or any platform exception occurs,
+`build()` returns `Unauthenticated` and clears secure storage — the
+same treatment as any other failed auth check. On Android, this
+required changing `MainActivity` to extend `FlutterFragmentActivity`
+(a `local_auth` platform requirement) and adding the
+`USE_BIOMETRIC` permission.
+
+**UX trade-off — gating the whole app vs. gating sensitive actions:**
+Gating the entire app at startup means every cold boot costs the user a
+biometric prompt, even just to browse the public jobs list — adding
+friction to the most common, lowest-stakes use case. Gating only
+sensitive actions (applying for a job, viewing saved applications)
+would let the app open instantly and only interrupt the user at the
+moment it actually matters. This implementation gates the whole app per
+the stretch spec; a more considered production design would likely
+move the check to guard only the apply/save flows instead.
+
+**The Riverpod challenge:** `AuthNotifier.build()` now awaits an async
+platform call before resolving. The router's `redirect` callback checks
+`authValue.isLoading` and returns `null` while that's true, so the app
+correctly stays put and doesn't route anywhere while the native
+biometric prompt is on screen — this required no changes to the router
+itself, since it was already built to tolerate an async `build()`. The
+real risk was a call that never resolves (a dropped platform callback),
+which would hang the app in `AsyncLoading` indefinitely with no visible
+prompt and no route change. This is mitigated by wrapping
+`_tryBiometricAuth()` in a try-catch that resolves to `false` on any
+exception — including "no enrolled biometrics" and "hardware
+unavailable" — so every failure mode fails safe to the login screen
+rather than hanging.
