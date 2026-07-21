@@ -14,6 +14,17 @@
 // does. This is the standard pattern for riverpod_generator overrides in
 // tests.
 //
+// Auth override: AuthNotifier.build() reads the access token from
+// FlutterSecureStorage, which has no platform channel backing in
+// flutter_test — that read hangs indefinitely rather than throwing or
+// resolving to null. Without an override, authNotifierProvider never
+// leaves its loading state, so GoRouter's redirect callback (which
+// returns null while loading) never fires either way. HomeScreen still
+// happened to render underneath the unresolved future, but that's an
+// accident of an unresolved Future, not a real authenticated state. This
+// override makes the authenticated state explicit and instantaneous
+// instead of relying on that hang being silently tolerated.
+//
 // Window size note: HomeScreen's LayoutBuilder switches to a 2-column
 // GridView at width >= 600, and both GridView.builder and ListView.builder
 // only build the items currently in the viewport. A narrow, tall window
@@ -28,7 +39,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:careerhub/main.dart';
 import 'package:careerhub/core/prefs_provider.dart';
 import 'package:careerhub/models/job.dart';
+import 'package:careerhub/models/user.dart';
+import 'package:careerhub/models/auth_state.dart';
 import 'package:careerhub/providers/jobs_notifier.dart';
+import 'package:careerhub/providers/auth_notifier.dart';
 import 'package:careerhub/widgets/job_card.dart';
 
 class _FakeJobsNotifier extends JobsNotifier {
@@ -75,6 +89,21 @@ class _FakeJobsNotifier extends JobsNotifier {
   }
 }
 
+class _FakeAuthNotifier extends AuthNotifier {
+  @override
+  Future<AuthState> build() async {
+    // Resolve immediately as authenticated — no secure storage read, so
+    // no hang, and no risk of GoRouter redirecting to /login mid-test.
+    return const Authenticated(
+      user: User(
+        id: 'test-user-1',
+        email: 'test@example.com',
+        displayName: 'Test User',
+      ),
+    );
+  }
+}
+
 Future<void> pumpCareerHubApp(WidgetTester tester) async {
   tester.view.physicalSize = const Size(400, 2400);
   tester.view.devicePixelRatio = 1.0;
@@ -94,6 +123,7 @@ Future<void> pumpCareerHubApp(WidgetTester tester) async {
       overrides: [
         jobsProvider.overrideWith(() => _FakeJobsNotifier()),
         prefsProvider.overrideWithValue(prefs),
+        authProvider.overrideWith(() => _FakeAuthNotifier()),
       ],
       child: const CareerHubApp(),
     ),

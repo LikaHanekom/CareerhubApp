@@ -1,26 +1,50 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../providers/auth_provider.dart';
+import 'auth_interceptor.dart';
 
 part 'dio_provider.g.dart';
 
+/// Shared by dioProvider below and by AuthRepository's own plain Dio, so
+/// both clients always point at the same server. AuthRepository can't
+/// watch this provider (that would pull in Riverpod-flavoured coupling
+/// it's not supposed to have), so the key/default are duplicated as a
+/// plain constant instead — kept here as the single source of truth for
+/// what that duplicate must match.
+const String apiBaseUrl = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: 'http://localhost:5011/api/v1/',
+);
+
+BaseOptions _baseOptions() => BaseOptions(
+  baseUrl: apiBaseUrl,
+  connectTimeout: const Duration(seconds: 10),
+  receiveTimeout: const Duration(seconds: 10),
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+);
+
 @riverpod
 Dio dio(Ref ref) {
-  final dio = Dio(
-    BaseOptions(
+  final dio = Dio(_baseOptions());
 
-      baseUrl: 'http://localhost:5011/api/v1/',
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+  dio.interceptors.add(
+    LogInterceptor(requestBody: true, responseBody: true),
+  );
+
+  final retryDio = Dio(_baseOptions());
+
+  dio.interceptors.add(
+    AuthInterceptor(
+      storage: const FlutterSecureStorage(),
+      retryDio: retryDio,
+      onUnauthenticated: ref.read(onUnauthenticatedProvider),
     ),
   );
 
-
-
   return dio;
 }
-
