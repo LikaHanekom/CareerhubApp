@@ -8,6 +8,9 @@ import '../providers/filter_notifier.dart';
 import '../providers/connectivity_provider.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/jobs_notifier.dart';
+import '../providers/saved_jobs_notifier.dart';
+import '../providers/filtered_applications_provider.dart';
+import '../providers/auth_notifier.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -140,6 +143,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  void _logout() {
+    // Invalidate every user-specific data provider BEFORE calling
+    // logout(). This must happen while the widget tree is still
+    // authenticated, so in-flight fetches are torn down explicitly
+    // here rather than left to implicit disposal during the redirect
+    // that's about to happen once auth state flips to Unauthenticated.
+    ref.invalidate(jobsProvider);
+    ref.invalidate(savedJobsProvider);
+    ref.invalidate(filteredApplicationsProvider);
+
+    ref.read(authProvider.notifier).logout();
+  }
+
   @override
   Widget build(BuildContext context) {
     // HomeScreen watches exactly ONE data provider (visibleJobsProvider),
@@ -160,6 +176,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             tooltip: 'Refresh jobs',
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.read(jobsProvider.notifier).refresh(),
+          ),
+          IconButton(
+            tooltip: 'Log out',
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
           ),
         ],
       ),

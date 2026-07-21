@@ -1,6 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../providers/auth_provider.dart';
+import 'auth_interceptor.dart';
 
 part 'dio_provider.g.dart';
 
@@ -15,17 +18,31 @@ const String apiBaseUrl = String.fromEnvironment(
   defaultValue: 'http://localhost:5011/api/v1/',
 );
 
+BaseOptions _baseOptions() => BaseOptions(
+  baseUrl: apiBaseUrl,
+  connectTimeout: const Duration(seconds: 10),
+  receiveTimeout: const Duration(seconds: 10),
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+);
+
 @riverpod
 Dio dio(Ref ref) {
-  final dio = Dio(
-    BaseOptions(
-      baseUrl: apiBaseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+  final dio = Dio(_baseOptions());
+
+  dio.interceptors.add(
+    LogInterceptor(requestBody: true, responseBody: true),
+  );
+
+  final retryDio = Dio(_baseOptions());
+
+  dio.interceptors.add(
+    AuthInterceptor(
+      storage: const FlutterSecureStorage(),
+      retryDio: retryDio,
+      onUnauthenticated: ref.read(onUnauthenticatedProvider),
     ),
   );
 

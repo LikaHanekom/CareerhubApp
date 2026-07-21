@@ -30,6 +30,10 @@ import 'package:careerhub/core/prefs_provider.dart';
 import 'package:careerhub/models/job.dart';
 import 'package:careerhub/providers/jobs_notifier.dart';
 import 'package:careerhub/widgets/job_card.dart';
+import 'package:careerhub/screens/home_screen.dart';
+import 'package:careerhub/screens/login_screen.dart';
+import 'package:careerhub/providers/auth_notifier.dart';
+import 'package:careerhub/models/auth_state.dart';
 
 class _FakeJobsNotifier extends JobsNotifier {
   @override
@@ -101,6 +105,42 @@ Future<void> pumpCareerHubApp(WidgetTester tester) async {
 }
 
 void main() {
+  // ---------------------------------------------------------------------
+  // TEMPORARY DIAGNOSTIC — remove once we know which screen actually
+  // renders in the test harness. Not part of the assignment's test suite.
+  // ---------------------------------------------------------------------
+  testWidgets('DIAGNOSTIC - what screen actually renders', (tester) async {
+    await pumpCareerHubApp(tester);
+    await tester.pumpAndSettle();
+
+    final onHome = find.byType(HomeScreen).evaluate().isNotEmpty;
+    final onLogin = find.byType(LoginScreen).evaluate().isNotEmpty;
+
+    debugPrint('=== DIAGNOSTIC ===');
+    debugPrint('HomeScreen present: $onHome');
+    debugPrint('LoginScreen present: $onLogin');
+    debugPrint('==================');
+  });
+
+  testWidgets('DIAGNOSTIC - auth state value', (tester) async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    // Give the async build() a moment to settle (or error).
+    await container.read(authProvider.future).catchError((e) {
+      debugPrint('=== authNotifierProvider.future threw: $e ===');
+      return Unauthenticated(); // dummy so catchError has a return type
+    });
+
+    final value = container.read(authProvider);
+    debugPrint('=== AUTH STATE DIAGNOSTIC ===');
+    debugPrint('isLoading: ${value.isLoading}');
+    debugPrint('hasError: ${value.hasError}');
+    debugPrint('error: ${value.error}');
+    debugPrint('value: ${value.asData?.value}');
+    debugPrint('=============================');
+  });
+
   testWidgets(
     'shows loading spinner, then renders job cards, status badges, and nav bar',
         (WidgetTester tester) async {
