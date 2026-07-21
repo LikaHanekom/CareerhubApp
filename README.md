@@ -747,3 +747,174 @@ and the cache is served. Fixing it properly would mean also checking Connectivit
 this assignment's isOfflineProvider was asked to do.
 
 ![Offline banner showing cached data with no network](assets/Offline-loading.png)
+
+
+# Assignment 2.4
+## Question 1 — Token storage and platform security boundaries
+
+Why tokens can't go in SharedPreferences. On Android, SharedPreferences writes to /data/data/<package_name>/shared_prefs/<name>.xml 
+— a plain, unencrypted XML file. Under normal circumstances Android's per-app sandboxing means only my app's own UID can 
+read that file, which is why it feels "safe enough" for something like a filter selection. But that protection has real 
+holes a token shouldn't rely on: on a debug build (android:debuggable ="true", which is exactly the build type I'm running
+during development), anyone with the device connected over USB can run adb shell run-as com.example.careerhub cat 
+shared_prefs/FlutterSharedPreferences.xml and read the file in plaintext — no root required, just USB debugging enabled.
+The same file is also swept up by adb backup and, depending on the manifest's backup rules, by Android's automatic cloud 
+backup — meaning a token could leave the device entirely in plaintext through a channel that has nothing to do with the app
+being compromised at all. A stolen refresh token from that file gives an attacker standing access to the account until it's
+revoked, which is a categorically worse outcome than someone seeing my selected job filter.
+
+What the iOS Keychain adds. Two protections a plain file doesn't have: first, Keychain items can be gated behind the
+device passcode, so even if someone extracts the raw storage container, the item can't be decrypted without the passcode 
+having been entered at least once since boot. Second, on devices with a Secure Enclave, the underlying encryption key can
+be generated and held entirely inside that dedicated hardware co-processor — the key material itself never becomes 
+accessible to the OS or app process, even if the kernel is compromised.
+
+kSecAttrAccessibleWhenUnlocked makes an item accessible only while the device is currently unlocked — 
+it becomes inaccessible the instant the device locks. kSecAttrAccessibleAfter FirstUnlock makes an item 
+accessible from the first unlock after boot onward, and it stays accessible even after the device locks 
+again (until the next reboot). For tokens that need to survive an app reinstall and still support things 
+like a background token refresh while the phone is locked, I'd choose AfterFirstUnlock — WhenUnlocked would
+make any refresh attempt that happens to fire while the phone is locked fail outright, which is worse UX for
+no real security gain in this app's threat model.
+
+EncryptedSharedPreferences and the API 23 requirement. EncryptedSharedPreferences (from Jetpack Security) wraps
+both keys and values in AES-256-GCM encryption, backed by a master key generated and held in the Android Keystore 
+system, introduced in API 23. Plain SharedPreferences gives none of that — it's cleartext XML. The reason API 23 is
+a hard floor: flutter_secure_storage needs android.security.keystore.KeyGenParameterSpec to generate that key, and 
+that class simply doesn't exist before API 23. On a device below API 23, the app installs fine and runs fine right 
+up until the first time it tries to create or access a key, at which point it crashes at runtime with a NoClassDefFoundError
+for KeyGenParameterSpec$Builder — there's no compile-time signal at all that this will happen, which is exactly why 
+minSdkVersion has to be raised to 23 rather than just adding a runtime check.
+
+## Question 2 — The sealed AuthState and the two-layer state machine
+
+Why an enum can't do this. A plain Dart enum (even an enhanced enum with per-case fields) requires every value to 
+share the same constructor shape — every case has to carry the same field types, whether or not that data is meaningful
+for that case. Authenticated needs to carry a User; AuthError needs to carry a String; Unauthenticated and Authenticating
+carry nothing at all. An enum would force me to give every case the same field — e.g. a nullable User? on all four values
+— which throws away the one guarantee I actually want: that if the state is Authenticated, there is definitely a User 
+attached, no null-check required. A sealed class lets each subtype declare its own distinct payload, so a switch expression
+that destructures Authenticated(:final user) gets a non-nullable User the compiler guarantees is there, and 
+AuthError(:final message) gets a guaranteed String — the type system enforces the shape per case, not just the existence
+of a shared "state" value.
+
+The two loading states. The first is the AsyncValue's own loading state, which exists while AuthNotifier.build() 
+is running at cold boot — triggered simply by the provider being read for the first time as the app starts, while 
+build() awaits readAccessToken() (and possibly tryRefresh()). During this window the redirect callback returns null 
+(per the guard: "if the async value is in a loading state, return null"), so no navigation decision is made yet — 
+the router just lets whatever's at initialLocation (/jobs in this app) sit there undecided for a moment before the 
+real redirect fires once build() resolves.
+
+The second is the Authenticating subtype of the resolved AuthState — this only appears once login() 
+sets state = AsyncData(Authenticating()) at the very start of a login attempt. At that point the outer 
+AsyncValue is not loading — it's AsyncData wrapping Authenticating(). The redirect callback evaluates 
+normally: not authenticated, but already on /login, so neither redirect rule fires and nothing navigates.
+What the user actually sees is the LoginScreen itself rendering its own FilledButton with a small 
+CircularProgressIndicator, since LoginScreen.build() watches authNotifierProvider directly and derives that loading 
+flag from the Authenticating case.
+
+Why redirect uses ref.read, not ref.watch. redirect isn't a widget's build() method — it's a plain closure that
+GoRouter calls on its own schedule, triggered whenever refreshListenable fires or navigation occurs. If it used 
+ref.watch(authNotifierProvider), that call would register a dependency between authNotifierProvider and the 
+routerProvider itself — meaning every single auth state change would cause routerProvider's whole body to 
+re-run and construct a brand-new GoRouter instance. Swapping out the GoRouter object mid-session resets its 
+internal navigation state, so the visible symptom would be jank on every auth change: a flash, lost scroll position,
+and potentially any open dialog getting dismissed out from under the user. That's why the router body only calls
+ref.watch (authStateListenableProvider) once, at construction time, purely to obtain the stable ChangeNotifier
+instance to hand to refreshListenable — GoRouter then listens to that object's own notifyListeners() calls to 
+know when to re-run redirect, entirely outside Riverpod's rebuild mechanism. Inside redirect itself, all I need is
+a one-time snapshot of the current auth state to decide where to send the user — ref.read gives exactly that, 
+without creating the extra dependency that would cause the router to keep rebuilding itself. 
+These two usages don't contradict each other: watch is used exactly once to get a stable object; read is used 
+repeatedly to take a snapshot.
+
+## Question 3 — The two-Dio architecture and the concurrent 401 queue
+
+The infinite loop if AuthRepository used dioProvider. The whole point of AuthInterceptor is that it watches every
+request/response pair going through the authenticated dioProvider client. If tryRefresh() sent its 
+POST /api/auth/refresh through that same client, the request would pass through AuthInterceptor.onRequest 
+(attaching whatever token happens to be stored) and, on a 401 response, back into AuthInterceptor.onError 
+— the exact same interceptor instance that's already mid-execution of the outer 401 handling that triggered 
+this refresh attempt in the first place. Because _isRefreshing is already true at that point, this second 
+onError invocation doesn't fall into the cleanup branch — it falls into the queueing branch: it creates a 
+new Completer<String>, pushes it onto _queue, and awaits it. But the only code that would ever call .complete()
+on that Completer is the outer case-4 handler's success path — and that handler is the very call that's currently 
+failing. Nothing can ever complete it. The request hangs forever rather than cleanly erroring, and every subsequent 
+401 that arrives while this state persists gets funneled into the same unresolvable queue instead of ever reaching 
+onUnauthenticated(). This is precisely why tryRefresh() and login() use a completely separate, interceptor-free Dio — 
+there's no interceptor for a refresh call to recursively trigger, so the loop can't start at all.
+
+Refresh token rotation and the concurrent-401 race. If three requests all fail with 401 at the same instant and,
+without a queue, all three independently POST to /api/auth/refresh carrying the same refresh token, the server's
+rotation logic becomes a race: refresh tokens are single-use, so whichever request the server processes first
+successfully rotates the token and returns a new pair — the other two requests are now presenting a refresh token
+the server has already invalidated, so they fail. Depending on how strictly the interceptor treats a failed refresh,
+that could look identical to "the session is genuinely dead," logging out a user whose session was actually fine. 
+The Completer<String> queue avoids this entirely: only the request that finds _isRefreshing == false actually sets 
+it to true and performs the refresh POST; the other two, arriving while it's already true, never touch the network —
+they just create a Completer, add it to _queue, and await. When the one real refresh call succeeds, it iterates _queue,
+calls .complete(newAccessToken) on every waiting Completer, and clears the list — each waiting call wakes up, 
+attaches the new token to its original request, and retries via retryDio.fetch(). Exactly one refresh call ever 
+reaches the server, no matter how many requests failed at once.
+
+The refresh-endpoint 401 guard. This guard exists to catch a 401 that's a response to the refresh call itself,
+and route it to immediate cleanup (case 2) instead of the normal refresh-and-retry machinery. Without it, a failed 
+refresh's 401 would arrive back at onError while _isRefreshing is still true — and, as traced above, it would fall 
+into case 3's queue rather than case 2's cleanup. _isRefreshing never gets reset to false in that path (only case 4's 
+own finally resets it, and this recursive call doesn't unwind cleanly back through that finally), and _queue accumulates 
+Completers that nothing will ever resolve. Crucially, onUnauthenticated() is only ever called from cases 2 and 4's failure 
+branch — case 3 never calls it. So without the guard, once a refresh genuinely fails, the app doesn't bounce the user to 
+the login screen at all — it just silently hangs every subsequent request that hits a 401, even though the session has 
+definitively ended.
+
+## Question 4 — Logout ordering and the circular import problem
+
+Why invalidation has to come before logout(). If logout() ran first, state flips to Unauthenticated, 
+the router's refreshListenable fires, and GoRouter redirects to /login — tearing down the authenticated 
+widget subtree as part of that navigation. If a background getJobs() fetch was still in flight on jobsNotifierProvider 
+at that moment, that Future is now running against a notifier whose Ref may be disposed before the fetch resolves 
+— the outcome depends on exactly when Riverpod tears it down relative to when the fetch completes, which isn't a 
+moment I control or can rely on being consistent. Calling ref.invalidate (jobsNotifierProvider) explicitly and synchronously,
+before logout() even runs, means I decide when that provider resets — on my own terms, at a known point — rather than
+hoping disposal happens to land at a safe moment relative to an in-flight network call.
+
+The circular import. If AuthNotifier.logout() invalidated jobsNotifierProvider directly, the chain would be:
+auth_notifier.dart imports jobs_notifier.dart (to call ref.invalidate on it) → jobs_notifier.dart imports 
+jobs_repository.dart → jobs_repository. dart imports dio_provider.dart (to get Dio) → after this assignment's 
+Part 9 wiring, dio_provider.dart imports auth_provider.dart (to read onUnauthenticatedProvider for the interceptor) 
+→ auth_provider.dart imports auth_notifier.dart (to reference authNotifierProvider inside onUnauthenticatedProvider's 
+ref.invalidate call) — which is back to the file we started at. I want to be precise here rather than overclaim: a 
+plain circular import between two Dart library files isn't actually a hard compiler error the way it would be in some
+other languages — Dart resolves the whole program as one graph and generally tolerates this. The real cost is 
+architectural, not a crash: it means the generic, app-wide auth layer would depend on one specific feature's data 
+notifier, AuthNotifier couldn't be reasoned about or tested without the entire jobs stack also being wired up, and 
+every new feature added to the app later would require going back and editing auth_notifier.dart to add another 
+invalidate call — which inverts the dependency direction the layering is supposed to have. That's exactly why this 
+assignment moves that responsibility to the caller (the logout button in the jobs screen's AppBar) instead of putting
+it inside AuthNotifier itself.
+
+Why logout() sets AsyncData(Unauthenticated()), not AsyncError. Logging out successfully is an expected, 
+normal terminal state — logout() didn't fail, it did exactly what it was supposed to do. AsyncError should 
+represent "the Future itself didn't complete," not "the resulting domain state happens to mean logged-out." 
+If it were AsyncError instead, the redirect callback — which pattern-matches on the resolved AuthState — 
+would have no AuthState to inspect at all for a condition that isn't actually a failure, forcing an awkward 
+special case just to detect "the user logged out" through the error channel instead of the data channel it belongs in.
+
+Downstream, because I invalidate jobsNotifierProvider before calling logout(), filteredJobsProvider 
+(which derives from it) is already back to its uninitialized state by the time the redirect fires — 
+though this barely matters in practice since the user is navigated to /login, an entirely different widget
+subtree that doesn't watch it at all.
+
+What logout() does not touch is the Isar cache — per spec it only calls deleteAll() on secure storage. 
+So after logout, jobCaches and jobApplicationIsars still hold whatever was last synced, sitting unencrypted on disk.
+On a genuinely fresh install on a new physical device, this is fine — secure storage starts empty and so does Isar's 
+database file, since neither exists yet. The scenario the question is really pointing at is a device backup/restore: 
+an OS-level app-data backup can restore Isar's on-disk database file to a new device (it's just a file), 
+while flutter_secure_storage's Keystore/Keychain-backed tokens do not survive that restore, since the underlying key 
+material is hardware/device-bound and isn't exported. So on that restored device: secure storage is genuinely empty, 
+build() correctly finds no token and returns Unauthenticated, and the login screen appears — which is the safe, correct
+outcome. But the moment anyone logs in on that restored device, jobsNotifierProvider.build()'s cache-then-network flow 
+will surface the previous device's stale cached jobs and applications before the network fetch overwrites them 
+— a real privacy gap if the restored device ends up with a different user than whoever's data was cached. 
+This assignment doesn't require fixing it, but the gap is real: logout() would need to also clear the Isar
+collections (or the data would need to be scoped per-user) to fully close it.
