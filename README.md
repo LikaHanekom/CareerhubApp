@@ -749,7 +749,7 @@ this assignment's isOfflineProvider was asked to do.
 ![Offline banner showing cached data with no network](assets/Offline-loading.png)
 
 
-# Assignment 2.4
+# Assignment 2.4 - 21/7/2026
 ## Question 1 — Token storage and platform security boundaries
 
 Why tokens can't go in SharedPreferences. On Android, SharedPreferences writes to /data/data/<package_name>/shared_prefs/<name>.xml 
@@ -918,3 +918,62 @@ will surface the previous device's stale cached jobs and applications before the
 — a real privacy gap if the restored device ends up with a different user than whoever's data was cached. 
 This assignment doesn't require fixing it, but the gap is real: logout() would need to also clear the Isar
 collections (or the data would need to be scoped per-user) to fully close it.
+
+## Part 9:
+Test modification
+
+Override added: authNotifierProvider.overrideWith(() => _FakeAuthNotifier()) in pumpCareerHubApp(), widget_test.dart.
+
+Fake class: _FakeAuthNotifier, extending the generated AuthNotifier base class and overriding build() to return Authenticated(user: <test User>) immediately, with no call to secure storage.
+
+Why the override was required: AuthNotifier.build() calls AuthRepository.readAccessToken(), which reads from FlutterSecureStorage. In the flutter_test environment there is no platform channel backing for flutter_secure_storage, so that read never resolves — the call hangs indefinitely rather than throwing or returning null. Without an override, authNotifierProvider stays in its AsyncLoading state for the lifetime of the test. The router's redirect callback checks authValue.isLoading and correctly returns null (no redirect) while loading, which meant HomeScreen still rendered — but only because the auth check never completed, not because authentication was genuinely bypassed. Confirmed by directly awaiting authNotifierProvider.future in isolation: the future never resolved and the test run had to be manually cancelled.
+
+This is a fragile pass, not a correct one — a slower CI machine, a stricter test timeout, or any future assertion that depends on the auth state actually resolving would break unpredictably. The override makes the authenticated state explicit and instantaneous instead of relying on an unresolved future being tolerated by pumpAndSettle().
+
+## Demo Verification
+
+### 1. Cold boot, no credentials
+The login screen appears immediately with no bottom navigation bar visible.
+
+![Cold boot login screen](screenshots/01-cold-boot-login.png)
+
+### 2. Invalid credentials
+Entering a wrong password shows an error message below the password field.
+Fields remain populated; no navigation occurs.
+
+![Invalid credentials error](screenshots/02-invalid-credentials.png)
+
+### 3. Valid credentials
+Entering correct credentials navigates to the jobs screen automatically —
+no code in LoginScreen calls a navigation method; GoRouter's redirect
+drove the transition.
+
+![Jobs screen after valid login](screenshots/03-valid-login-jobs-screen.png)
+
+### 4. Token persistence
+Force-closing without signing out and relaunching loads the jobs screen
+directly; the login screen does not reappear because the stored token is
+still valid.
+
+![Jobs screen loads directly on relaunch](screenshots/04-token-persistence.png)
+
+### 5. Logout
+Tapping the logout icon returns to the login screen. The Android back
+button exits the app rather than returning to the jobs screen — there is
+no authenticated route left in the back stack.
+
+![Login screen after logout](screenshots/05-logout-back-stack.png)
+
+### 6. Cold boot after logout
+Killing and relaunching the app shows the login screen again, confirming
+secure storage was cleared.
+
+![Login screen after cold boot post-logout](screenshots/06-cold-boot-after-logout.png)
+
+### flutter test
+```
+PS C:\Users\alika\dev\careerhub> flutter test
+00:09 +7: All tests passed!                                                 
+PS C:\Users\alika\dev\careerhub> 
+
+```

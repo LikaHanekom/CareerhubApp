@@ -11,6 +11,7 @@ import '../screens/login_screen.dart';
 import '../models/auth_state.dart';
 import '../providers/auth_notifier.dart';
 import '../providers/auth_provider.dart';
+import '../screens/register_screen.dart';
 
 part 'app_router.g.dart';
 
@@ -29,16 +30,21 @@ GoRouter router(Ref ref) {
 
       final authState = authValue.asData?.value;
       final isAuthenticated = authState is Authenticated;
-      final isOnLogin = state.matchedLocation == '/login';
+      final isOnAuthFlow = state.matchedLocation == '/login' ||
+          state.matchedLocation == '/register';
 
-      if (!isAuthenticated && !isOnLogin) return '/login';
-      if (isAuthenticated && isOnLogin) return '/jobs';
+      if (!isAuthenticated && !isOnAuthFlow) return '/login';
+      if (isAuthenticated && isOnAuthFlow) return '/jobs';
       return null;
     },
     routes: [
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {

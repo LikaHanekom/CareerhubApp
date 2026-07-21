@@ -185,6 +185,53 @@ class AuthRepository {
     await _storage.deleteAll();
   }
 
+  Future<ApiResult<String>> register({
+    required String username,
+    required String email,
+    required String password,
+    required String fullName,
+    required String role,
+  }) async {
+    try {
+      final response = await _dio.post('/auth/register', data: {
+        'username': username,
+        'email': email,
+        'password': password,
+        'fullName': fullName,
+        'role': role,
+      });
+
+      if (response.statusCode == 200) {
+        final data = response.data as Map<String, dynamic>;
+        final createdUsername = data['username'] as String;
+        return Success(createdUsername);
+      }
+
+      return const ServerFailure('Unexpected response from server.', 0);
+    } on DioException catch (e) {
+      final statusCode = e.response?.statusCode;
+
+      if (statusCode == 409) {
+        return const ServerFailure('Username or email already exists.', 409);
+      }
+      if (statusCode == 400) {
+        return const ServerFailure('All fields are required.', 400);
+      }
+
+      return switch (e.type) {
+        DioExceptionType.connectionTimeout ||
+        DioExceptionType.sendTimeout ||
+        DioExceptionType.receiveTimeout ||
+        DioExceptionType.connectionError =>
+            NetworkFailure('No internet connection. Please check your network.'),
+        _ => ServerFailure('The server returned an error.', statusCode ?? 0),
+      };
+    } catch (e) {
+      return UnknownFailure('An unexpected error occurred: $e');
+    }
+  }
+
+
   /// Decodes the middle segment of a JWT (the payload) from Base64URL.
   /// JWT payloads omit the trailing '=' padding Dart's base64 decoder
   /// normally requires, so it has to be re-added by hand before decoding
@@ -205,5 +252,7 @@ class AuthRepository {
     } catch (_) {
       return null;
     }
+
+
   }
 }
