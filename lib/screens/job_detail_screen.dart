@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../models/job.dart';
 import '../providers/jobs_notifier.dart';
 import '../providers/saved_jobs_notifier.dart';
-import '../widgets/apply_form_sheet.dart';
 
 class JobDetailScreen extends ConsumerWidget {
   final String jobId;
@@ -105,18 +105,7 @@ class _JobDetailBody extends ConsumerWidget {
         const SizedBox(height: 24),
         FilledButton(
           onPressed: job.canApply
-              ? () async {
-            final applied = await showModalBottomSheet<bool>(
-              context: context,
-              isScrollControlled: true, // lets the sheet grow above the keyboard
-              builder: (_) => ApplyFormSheet(job: job),
-            );
-            if (applied == true && context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Application submitted!')),
-              );
-            }
-          }
+              ? () => context.push('/jobs/${job.id}/apply')
               : null,
           child: Text(job.canApply ? 'Apply now' : 'Applications closed'),
         ),

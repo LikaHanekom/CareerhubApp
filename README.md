@@ -1053,3 +1053,253 @@ prompt and no route change. This is mitigated by wrapping
 exception — including "no enrolled biometrics" and "hardware
 unavailable" — so every failure mode fails safe to the login screen
 rather than hanging.
+
+
+## Assignment3.1: Part 1 — Written Decisions
+- 22/7/2026
+
+### Question 1 — The three-tree model and rebuild scope
+
+**Element reuse when a parent rebuilds and produces a widget of the same runtimeType with the same key:**
+When a parent's `build()` runs again and creates a new widget instance of the same `runtimeType`
+(and, if keyed, the same `Key`), the corresponding `Element` in the element tree is **not** discarded and recreated. 
+
+Instead, the element calls `update(newWidget)` on itself: it swaps its internal reference from the old widget instance
+to the new one, then calls `updateRenderObject()` on the existing `RenderObject`. Because the element and its `RenderObject`
+persist, **no new `RenderObject` is created**, and layout/paint only re-run if the new widget's properties actually differ
+from the old one's in a way that affects rendering (e.g. different text, different color, different size constraints) 
+— the element diffs the properties, not just "did build() run." If the widget produces a different `runtimeType` 
+(or the same type but a different `Key`), the element tree treats this as "this is conceptually a different widget" 
+— it deactivates/disposes the old element and its `RenderObject` entirely and mounts a brand new element and `RenderObject`
+from scratch, meaning full layout and paint work, plus loss of any state associated with that subtree.
+
+**What gets recreated when the jobs screen's `build()` reruns on a filter chip tap:**
+Currently, tapping a filter chip changes both the filter provider and the filtered-jobs provider, 
+and because the jobs screen watches both in a single `ConsumerWidget`, Riverpod calls the screen's entire 
+`build()` method again. Every widget instance the method constructs is a **new object**: the `Scaffold`, the `AppBar`, 
+the `actions` list containing the logout `IconButton`, the filter chip `Row`, and every visible `JobCard` — even the ones 
+displaying jobs that didn't change at all. Creating these new widget objects is not free, even though the *element* tree 
+can reuse the underlying `RenderObject`s for unchanged elements: each `build()` call allocates new widget objects on the heap,
+Flutter's element-reconciliation ("diffing") has to walk the tree and compare old vs. new widget objects property-by-property 
+to decide what actually changed, and any widget with `Key`-based children (like a `ListView` of `JobCard`s) has to be diffed 
+by key across an unbounded list rather than skipped outright. The cost scales with however many widgets got needlessly
+reconstructed and diffed, even when the final on-screen pixels end up identical.
+
+**Why extraction makes the `Scaffold` body `const`-constructable, and what happens with a repeated const widget:**
+After extracting `_FilterChips` and `_JobList` into their own `ConsumerWidget`s, the jobs screen's `build()` method no 
+longer calls `ref.watch` at all — it has nothing to react to, so it only runs once, at mount. Because the body
+(`Column(children: [_FilterChips(), Expanded(child: _JobList())])`) contains no runtime-computed values 
+(no variables, no provider reads, no closures capturing changing state), the entire expression can be evaluated once, 
+at compile time, as a `const` object. When the Flutter element tree encounters a `const` widget instance it has already 
+seen before (Dart canonicalizes identical `const` expressions to the exact same object in memory), the element performs 
+an **identity check** (`==`, which for `const` objects reduces to pointer/reference equality) and, seeing the widget instance 
+is literally the same object as last time, **skips calling `build()` on that subtree entirely** — it doesn't even attempt to diff properties,
+because there's nothing to diff; the object is provably unchanged.
+
+---
+
+### Question 2 — const short-circuit and RepaintBoundary layer isolation
+
+**What the element does with a repeated const child, and at what cost:**
+Because identical `const` expressions are canonicalized to the same object instance by the Dart compiler,
+when a parent rebuilds and produces a `const` child widget it has already constructed before, the element
+tree's diffing step short-circuits at the very first check: `identical(oldWidget, newWidget)` returns `true`.
+When this happens, the element does **not** call `child.build()` again, does **not** perform a property-by-property
+diff (there's nothing to diff — it's the same object), and does **not** touch the `RenderObject` at all. 
+The cost of this check is essentially free — a single pointer comparison — versus the cost of a full rebuild-and-diff cycle,
+which is why sprinkling `const` liberally throughout a widget tree is one of the cheapest optimizations available in Flutter.
+
+**RepaintBoundary and GPU work during a scroll:**
+`RepaintBoundary` introduces a new compositing layer in the `RenderObject` tree — essentially a boundary 
+Flutter's rendering engine (Skia/Impeller) can rasterize independently and cache as its own texture. 
+During a list scroll, if the job list is wrapped in a `RepaintBoundary`, only the pixels *inside* that
+boundary need to be re-rasterized as items scroll into and out of view; everything outside the boundary 
+(the `AppBar`, the filter chip row) is composited from its **already-cached layer** without being redrawn.
+Without the boundary, a repaint of the scrolling content can force the entire visual subtree — including 
+static widgets that share the same paint layer — to be re-rasterized on every frame, since Flutter has no 
+layer seam at which to stop. The mechanism that lets the GPU skip re-rasterizing an unchanged layer is 
+**layer caching within the compositing tree** — each `RepaintBoundary` produces its own `PictureLayer`/`OffsetLayer` 
+that persists across frames until something inside it actually changes. The memory cost is real, though: each `RepaintBoundary`
+allocates its own cached layer (essentially an off-screen bitmap/texture sized to the boundary's bounds), so adding one per 
+list item, for example, would multiply memory usage significantly rather than save it — the boundary should wrap a coherent,
+infrequently-changing-relative-to-its-surroundings region, not every leaf widget.
+
+**Two scenarios where adding a RepaintBoundary is wasteful:**
+1. **A widget that repaints on nearly every frame anyway** — for example, wrapping a live countdown timer display 
+or a constantly-animating progress indicator in a `RepaintBoundary` provides no benefit, because the whole point 
+of the boundary is to let Flutter *skip* repainting when nothing changed; if the content changes every frame regardless, 
+you pay the memory cost of the extra cached layer with zero corresponding savings, since that layer has to be re-rasterized 
+every single frame anyway.
+2. **Wrapping every individual list item rather than the list as a whole** — putting a `RepaintBoundary` around each 
+`JobCard` individually, rather than around the `ListView` as a single unit, multiplies the number of cached layers 
+(and their memory overhead) by the number of visible items, while providing little additional isolation benefit beyond
+what wrapping the list once already achieves — the static `JobCard`s aren't repainting on scroll regardless, 
+since scrolling is a compositor-level transform, not a repaint, for content that hasn't changed.
+
+---
+
+### Question 3 — The hooks model and controller lifecycle
+
+**Hook ordering failure mode:**
+Hooks are stored as a plain, numerically indexed list attached to the element (not as named fields on a class), so the hooks 
+framework identifies *which* hook's state to return on each rebuild purely by **its position in the call sequence** — the first
+`useX()` call is always slot 0, the second is always slot 1, and so on. This is why hooks must be called unconditionally, in 
+the same order, on every single build: if `useTextEditingController()` is wrapped in an `if` statement whose condition changes
+between two consecutive builds, the *count and order* of hook calls shifts. On the build where the condition is now false, 
+the hook that used to occupy slot 2 (say) is simply never called, so every hook *after* that point in the list is now reading
+from the wrong slot — the framework has no way to know the "meaning" of a slot changed, it just returns whatever state object 
+happens to be sitting there. In practice this either throws an assertion error at runtime (`Hooks count mismatch` or similar,
+since flutter_hooks does track a hook-count check specifically to catch this) or, worse, silently hands back a controller 
+instance meant for a *different* hook, corrupting state in a way that's very confusing to debug. The user-visible symptom 
+is typically an immediate app crash (red screen in debug mode) the moment the conditional hook call's branch flips, or 
+subtly wrong data/controllers appearing in fields that shouldn't be affected at all.
+
+**TextEditingController fragility on a State class vs. hook-managed:**
+A `TextEditingController` declared as a field on a `State` class is fragile because its lifecycle is **entirely the developer's
+manual responsibility** — Dart and Flutter provide no automatic safety net; if the developer forgets to override `dispose()` 
+and call `controller.dispose()` inside it, the controller (and the `ChangeNotifier` listeners it's holding, plus the underlying
+native text-editing resources) leaks: the object stays in memory, still subscribed to notifications, even after the widget that
+created it has been unmounted and should be garbage-collected, because something (the controller's own listener list) is still 
+holding a live reference. This is a classic "silent" memory leak — the app doesn't crash, it just slowly accumulates 
+dead-but-retained objects across screen navigations. `useTextEditingController()` provides a disposal **guarantee** rather
+than a convention: the hook's implementation registers the controller for automatic disposal internally, tied to the 
+*element's* lifecycle rather than requiring the developer to remember anything. Specifically, this guarantee comes from 
+the hook's internal use of `Hook.use()`'s dispose callback mechanism — each hook can register a `dispose()` function 
+that the framework calls automatically when the owning element is unmounted, and `useTextEditingController()`'s implementation
+does exactly this, calling the controller's own `.dispose()` for you the moment the widget goes away, with no `State.dispose()`
+override required at all.
+
+**useMemoized and the GlobalKey scenario:**
+If a `GlobalKey<FormBuilderState>()` were declared as a plain local variable inside `build()` rather than wrapped in 
+`useMemoized()`, a **brand new `GlobalKey` instance would be created on every single rebuild** of the widget — `build()` 
+reruns the entire function body every time, including any bare `GlobalKey()` constructor call sitting inside it, unlike 
+a class field, which is only initialized once. The mechanism this triggers: a `GlobalKey` uniquely tags a specific 
+`Element` in the tree so that widget's state can be looked up directly. When the `FormBuilder` widget's `key:` parameter 
+receives a *new* `GlobalKey` object on a rebuild (since keys are compared by identity, not value), Flutter's reconciliation 
+logic sees this as "the widget associated with the old key no longer exists, and a widget with a new, never-before-seen key 
+has appeared" — it does **not** treat this as the same logical widget receiving updated props; it deactivates and **unmounts**
+the old `FormBuilder` element (along with its `FormBuilderState`, discarding all the user's entered field values) and mounts 
+a completely new one from scratch. The user-visible symptom is the form silently resetting to its initial empty state on every
+rebuild that isn't specifically tied to user input inside the form itself — e.g., any parent-level state change that causes 
+`ApplyScreen.build()` to rerun would wipe out everything the user had typed. `useMemoized()` prevents this by computing the 
+`GlobalKey()` expression exactly once (on the very first build) and returning that same cached instance on every subsequent 
+build, so the key's identity — and therefore the `FormBuilder`'s mounted state — remains stable across rebuilds.
+
+---
+
+### Question 4 — FormBuilder state and cross-field validation
+
+**Why saveAndValidate() calls save() before validate():**
+`save()` walks every registered field in the `FormBuilderState` and calls each field's `onSaved` callback (or, more precisely,
+commits each field's current live value into the centralized `FormBuilderState.value` map), so that the *entire form's* current
+values are available together, in one place, at the moment validation runs. This matters specifically for cross-field and 
+computed validators: the earliest-start-date field's custom validator needs to compare the selected date against
+`DateTime.now()` — but more importantly, any validator that needs to reference *another* field's value 
+(not the case here, but generally true for FormBuilder's cross-field validation model) can only safely read 
+`formKey.currentState!.value['other_field']` if `save()` has already run and populated that shared value map. 
+If `validate()` ran *before* `save()`, individual field validators would still receive their own field's raw 
+current input value correctly (validators receive the field's live value directly, not through the saved map) —
+so in this specific narrow case the start-date validator itself wouldn't behave incorrectly, since it only checks its 
+own field's value against `DateTime.now()`. But the *design principle* the assignment is testing holds generally: 
+any validator relying on `FormBuilderState.value` (rather than the field's own passed-in value) to reason about the 
+form's overall state must run after `save()`, or it will read stale/empty data from a value map that hasn't been 
+populated yet — silently passing validation it should have failed, since a look-up against an empty or outdated 
+map may return `null` and be treated as "no constraint violated" rather than "field is genuinely invalid."
+
+**Why required() must run first in a composed validator list:**
+`FormBuilderValidators.compose()` runs its list of validators in order and **stops at the first 
+one that returns a non-null (failing) result**. If `required()` is not first, a validator like `minLength(50)` for 
+the cover letter field would run against an **empty string** when the field has been left blank entirely. `minLength(50)` 
+doesn't distinguish "empty" from "just too short" — an empty string has length 0, which is certainly less than 50, so 
+`minLength(50)` would still correctly report a failure ("must be at least 50 characters") — but the resulting *error message* 
+is misleading and unhelpful: the user left the field blank, and instead of seeing "This field is required," they'd see "Must 
+be at least 50 characters," which doesn't correctly communicate that the field is simply missing entirely versus 
+present-but-too-short. Ordering `required()` first ensures the more fundamental, more informative failure 
+("this field must be filled in at all") is surfaced before the framework ever bothers evaluating length/format constraints 
+against an empty value.
+
+**Portfolio URL — the three-case validator:**
+The portfolio URL field is optional, so its validator must handle three distinct cases correctly:
+1. **Field is empty or null** → validator must return `null` (no error) — an empty optional field is valid by definition.
+2. **Field contains a well-formed URL** → validator must return `null` (no error) — the value satisfies the format.
+3. **Field contains a non-empty string that is not a valid URL** → validator must return an error string describing the format problem.
+
+The correct implementation is a guard clause before delegating to `FormBuilderValidators.url()`:
+```dart
+validator: (value) {
+  if (value == null || value.isEmpty) return null;
+  return FormBuilderValidators.url()(value);
+},
+```
+Applying `FormBuilderValidators.url()` **directly**, without this guard, produces the wrong 
+behavior specifically in case 1: `url()` has no way to know the field is *intentionally* optional — 
+it simply checks "is this string a valid URL," and an empty string is not a valid URL by that check, 
+so `url()` alone would incorrectly reject a user who correctly left an optional field blank, reporting
+a validation error on a field the user did nothing wrong on.
+
+## Part 3: 
+### Baseline rebuild counts
+
+HomeScreen: 9 rebuilds
+JobCard: 38 rebuilds
+
+### Rebuild counts after extraction (Part 3)
+
+HomeScreen: 1 (built once at mount, 0 rebuilds thereafter)
+_FilterChips: [your cleanest measured number]
+_JobList: [your cleanest measured number]
+JobCard: [your cleanest measured number]
+
+Note: JobCard rebuilds when the actual set of visible jobs changes
+between filter selections, since ListView.builder's itemBuilder
+naturally reconstructs items for whichever indices are visible after
+_JobList rebuilds with new data — this is expected Flutter behavior,
+not a failure of the extraction. HomeScreen itself now calls ref.watch
+zero times and shows exactly one build for the whole session, confirming
+the AppBar, logout button, and screen-level Scaffold are fully isolated
+from filter/list changes.
+
+## Part 4 — RepaintBoundary
+
+RepaintBoundary wraps only the GridView/ListView inside _JobList's data
+arm (both the wide-screen and narrow-screen branches have their own
+boundary, since only one is ever mounted at a time).
+
+Verified using Flutter's repaint rainbow (debugRepaintRainbowEnabled).
+Note: this overlay relies on assert() blocks internal to Flutter's
+rendering pipeline, which are compiled out of profile and release
+builds — so verification was done in debug mode rather than profile
+mode as the assignment's literal instruction suggests. The underlying
+compositing behavior RepaintBoundary provides is identical in profile
+mode; debug mode was needed only to visually confirm it.
+
+Confirmed: during a brisk scroll of the job list, the list area flashed
+with the rainbow overlay on every frame, while the AppBar and filter
+chip row above it remained solid and static — confirming the boundary
+correctly isolates the scrolling content's repaints from the rest of
+the screen.
+
+## Rebuild count comparison (3 filter chip taps: Remote → All → Remote)
+
+| Stage         | Jobs screen (HomeScreen) | _FilterChips | _JobList | JobCard |
+|---------------|--------------------------|---------------|----------|---------|
+| Before Part 3 | 3                        | —             | —        | 6       |
+| After Part 8  | 0                        | 3             | 3        | 6       |
+
+JobCard rebuilds 6 times (2 per _JobList rebuild) because switching between
+"Remote" and "All" genuinely changes which jobs are visible — each rebuild
+reflects new data being rendered, not wasted work. What changed after the
+refactor is that HomeScreen, the AppBar, and the logout button no longer
+rebuild at all, since only _FilterChips and _JobList actually watch the
+providers affected by a filter change.
+
+## DevTools scroll frame verification
+
+Recorded a 3-second brisk scroll of the jobs list in profile mode (90 FPS
+average, no jank frames). Inspecting the Timeline Events for an individual
+frame shows VsyncProcessCallback → Animator::BeginFrame → PAINT (root) →
+PAINT, with no Build phase span present — confirming no widget build()
+methods, including JobCard's, ran during the scroll. This is the expected
+result of wrapping the scroll view in a RepaintBoundary: the GPU
+recomposites the existing raster layer rather than the framework rebuilding
+widgets.

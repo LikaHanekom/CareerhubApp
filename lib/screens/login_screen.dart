@@ -1,37 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/auth_state.dart';
 import '../providers/auth_notifier.dart';
 
-class LoginScreen extends ConsumerStatefulWidget {
+//Hooks
+class LoginScreen extends HookConsumerWidget {
   const LoginScreen({super.key});
 
   @override
-  ConsumerState<LoginScreen> createState() => _LoginScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final usernameController = useTextEditingController();
+    final passwordController = useTextEditingController();
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
-
-  @override
-  void dispose() {
-    _usernameController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    ref.read(authProvider.notifier).login(
-      _usernameController.text.trim(),
-      _passwordController.text,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
     final authValue = ref.watch(authProvider);
     final authState = authValue.asData?.value;
 
@@ -40,6 +23,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       AuthError(message: final m) => m,
       _ => null,
     };
+
+    void submit() {
+      ref.read(authProvider.notifier).login(
+        usernameController.text.trim(),
+        passwordController.text,
+      );
+    }
 
     final theme = Theme.of(context);
 
@@ -65,7 +55,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 32),
                 TextField(
-                  controller: _usernameController,
+                  controller: usernameController,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
@@ -75,10 +65,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
                 TextField(
-                  controller: _passwordController,
+                  controller: passwordController,
                   obscureText: true,
                   textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => isLoading ? null : _submit(),
+                  onSubmitted: (_) => isLoading ? null : submit(),
                   decoration: const InputDecoration(
                     labelText: 'Password',
                     border: OutlineInputBorder(),
@@ -94,7 +84,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ],
                 const SizedBox(height: 24),
                 FilledButton(
-                  onPressed: isLoading ? null : _submit,
+                  onPressed: isLoading ? null : submit,
                   child: isLoading
                       ? const SizedBox(
                     height: 18,
