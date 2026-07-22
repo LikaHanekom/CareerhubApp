@@ -11,6 +11,9 @@ import '../providers/jobs_notifier.dart';
 import '../providers/saved_jobs_notifier.dart';
 import '../providers/filtered_applications_provider.dart';
 import '../providers/auth_notifier.dart';
+import '../widgets/jobs_shimmer.dart';
+
+
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -241,7 +244,7 @@ class _JobList extends ConsumerWidget {
     final visibleJobsAsync = ref.watch(visibleJobsProvider);
 
     return visibleJobsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const JobsShimmer(),
       error: (err, stack) => Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
