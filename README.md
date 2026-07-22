@@ -1278,3 +1278,28 @@ with the rainbow overlay on every frame, while the AppBar and filter
 chip row above it remained solid and static — confirming the boundary
 correctly isolates the scrolling content's repaints from the rest of
 the screen.
+
+## Rebuild count comparison (3 filter chip taps: Remote → All → Remote)
+
+| Stage         | Jobs screen (HomeScreen) | _FilterChips | _JobList | JobCard |
+|---------------|--------------------------|---------------|----------|---------|
+| Before Part 3 | 3                        | —             | —        | 6       |
+| After Part 8  | 0                        | 3             | 3        | 6       |
+
+JobCard rebuilds 6 times (2 per _JobList rebuild) because switching between
+"Remote" and "All" genuinely changes which jobs are visible — each rebuild
+reflects new data being rendered, not wasted work. What changed after the
+refactor is that HomeScreen, the AppBar, and the logout button no longer
+rebuild at all, since only _FilterChips and _JobList actually watch the
+providers affected by a filter change.
+
+## DevTools scroll frame verification
+
+Recorded a 3-second brisk scroll of the jobs list in profile mode (90 FPS
+average, no jank frames). Inspecting the Timeline Events for an individual
+frame shows VsyncProcessCallback → Animator::BeginFrame → PAINT (root) →
+PAINT, with no Build phase span present — confirming no widget build()
+methods, including JobCard's, ran during the scroll. This is the expected
+result of wrapping the scroll view in a RepaintBoundary: the GPU
+recomposites the existing raster layer rather than the framework rebuilding
+widgets.

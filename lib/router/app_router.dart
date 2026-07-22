@@ -12,6 +12,7 @@ import '../models/auth_state.dart';
 import '../providers/auth_notifier.dart';
 import '../providers/auth_provider.dart';
 import '../screens/register_screen.dart';
+import '../screens/apply_screen.dart';
 
 part 'app_router.g.dart';
 
@@ -63,6 +64,15 @@ GoRouter router(Ref ref) {
                       final id = state.pathParameters['id']!;
                       return JobDetailScreen(jobId: id);
                     },
+                    routes: [
+                      GoRoute(
+                        path: 'apply',
+                        builder: (context, state) {
+                          final id = state.pathParameters['id']!;
+                          return ApplyScreen(jobId: id);
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
