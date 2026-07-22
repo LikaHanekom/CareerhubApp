@@ -1258,3 +1258,23 @@ not a failure of the extraction. HomeScreen itself now calls ref.watch
 zero times and shows exactly one build for the whole session, confirming
 the AppBar, logout button, and screen-level Scaffold are fully isolated
 from filter/list changes.
+
+## Part 4 — RepaintBoundary
+
+RepaintBoundary wraps only the GridView/ListView inside _JobList's data
+arm (both the wide-screen and narrow-screen branches have their own
+boundary, since only one is ever mounted at a time).
+
+Verified using Flutter's repaint rainbow (debugRepaintRainbowEnabled).
+Note: this overlay relies on assert() blocks internal to Flutter's
+rendering pipeline, which are compiled out of profile and release
+builds — so verification was done in debug mode rather than profile
+mode as the assignment's literal instruction suggests. The underlying
+compositing behavior RepaintBoundary provides is identical in profile
+mode; debug mode was needed only to visually confirm it.
+
+Confirmed: during a brisk scroll of the job list, the list area flashed
+with the rainbow overlay on every frame, while the AppBar and filter
+chip row above it remained solid and static — confirming the boundary
+correctly isolates the scrolling content's repaints from the rest of
+the screen.

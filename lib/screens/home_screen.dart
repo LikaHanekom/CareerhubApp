@@ -10,7 +10,7 @@ import 'package:go_router/go_router.dart';
 import '../providers/jobs_notifier.dart';
 import '../providers/saved_jobs_notifier.dart';
 import '../providers/filtered_applications_provider.dart';
-
+import '../providers/auth_notifier.dart';
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -35,6 +35,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _logout() {
+    ref.invalidate(jobsProvider);
+    ref.invalidate(savedJobsProvider);
+    ref.invalidate(filteredApplicationsProvider);
+    ref.read(authProvider.notifier).logout();
   }
 
   Widget _buildSearchField() {
@@ -71,6 +78,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             tooltip: 'Refresh jobs',
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.read(jobsProvider.notifier).refresh(),
+          ),
+          IconButton(
+            tooltip: 'Log out',
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
           ),
         ],
       ),
@@ -199,22 +211,26 @@ class _JobList extends ConsumerWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth >= 600) {
-          return GridView.builder(
-            padding: const EdgeInsets.all(8),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.87,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
+          return RepaintBoundary(
+            child: GridView.builder(
+              padding: const EdgeInsets.all(8),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.87,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: jobs.length,
+              itemBuilder: (context, index) => _buildCard(context, jobs[index]),
             ),
-            itemCount: jobs.length,
-            itemBuilder: (context, index) => _buildCard(context, jobs[index]),
           );
         }
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          itemCount: jobs.length,
-          itemBuilder: (context, index) => _buildCard(context, jobs[index]),
+        return RepaintBoundary(
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            itemCount: jobs.length,
+            itemBuilder: (context, index) => _buildCard(context, jobs[index]),
+          ),
         );
       },
     );

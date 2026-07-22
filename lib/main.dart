@@ -8,7 +8,6 @@ import 'core/isar_provider.dart';
 import 'core/prefs_provider.dart';
 import 'data/job_application_isar.dart';
 import 'data/job_cache.dart';
-
 void main() async {
   // Ensure engine bindings are ready for native plugins. This must be the
   // first statement: it creates the BinaryMessenger that Flutter's platform
@@ -31,6 +30,7 @@ void main() async {
   //  Initialize shared preferences for filter state
   final sharedPrefs = await SharedPreferences.getInstance();
 
+  //debugRepaintRainbowEnabled = true;
   // Run the app with runtime overrides injected into ProviderScope
   runApp(
     ProviderScope(
