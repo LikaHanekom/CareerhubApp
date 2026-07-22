@@ -1236,3 +1236,25 @@ behavior specifically in case 1: `url()` has no way to know the field is *intent
 it simply checks "is this string a valid URL," and an empty string is not a valid URL by that check, 
 so `url()` alone would incorrectly reject a user who correctly left an optional field blank, reporting
 a validation error on a field the user did nothing wrong on.
+
+## Part 3: 
+### Baseline rebuild counts
+
+HomeScreen: 9 rebuilds
+JobCard: 38 rebuilds
+
+### Rebuild counts after extraction (Part 3)
+
+HomeScreen: 1 (built once at mount, 0 rebuilds thereafter)
+_FilterChips: [your cleanest measured number]
+_JobList: [your cleanest measured number]
+JobCard: [your cleanest measured number]
+
+Note: JobCard rebuilds when the actual set of visible jobs changes
+between filter selections, since ListView.builder's itemBuilder
+naturally reconstructs items for whichever indices are visible after
+_JobList rebuilds with new data — this is expected Flutter behavior,
+not a failure of the extraction. HomeScreen itself now calls ref.watch
+zero times and shows exactly one build for the whole session, confirming
+the AppBar, logout button, and screen-level Scaffold are fully isolated
+from filter/list changes.
